@@ -252,7 +252,7 @@ function RestaurantPortal() {
         const order={restaurant_name:restaurant.name,restaurant_address:restaurant.address,customer_name:form.customerName,customer_phone:form.customerPhone,dropoff_address:form.dropoffAddress,order_details:form.orderDetails,notes:form.notes,delivery_fee:parseFloat(form.deliveryFee)||6,status:"pending",created_at:new Date().toISOString()};
         const [created]=await sb.createOrder(order);
         setNewOrderId(created.id);
-        await sendSMS("+19296908573","New delivery from "+restaurant.name+"!\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+form.dropoffAddress+"\nFee: $"+form.deliveryFee);
+        try { await sendSMS("+19296908573","New delivery from "+restaurant.name+"!\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+form.dropoffAddress+"\nFee: $"+form.deliveryFee);
       }
       setSubmitted(true);
     } catch(e){ alert("Error. Try again."); }
