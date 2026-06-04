@@ -204,7 +204,10 @@ function Dashboard() {
           <h1 style={{fontSize:28,fontWeight:900,letterSpacing:"-.02em"}}>Your Deliveries</h1>
           <p style={{color:muted,fontSize:13,marginTop:4}}>Canaan & surrounding areas · Litchfield County, CT</p>
         </div>
-        <button className="btn-outline" onClick={loadOrders} style={{fontSize:11}}>Refresh</button>
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn-outline" onClick={()=>{unlockAudio();playChime();}} style={{fontSize:11}}>🔔 Test Sound</button>
+          <button className="btn-outline" onClick={loadOrders} style={{fontSize:11}}>Refresh</button>
+        </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:28}}>
         {[{label:"Pending",value:pending,color:"#FFC107"},{label:"Active",value:active,color:"#17A2B8"},{label:"Delivered",value:delivered,color:"#28A745"}].map(s=>(
