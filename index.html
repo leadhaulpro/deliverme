@@ -253,6 +253,7 @@ function RestaurantPortal() {
         const [created]=await sb.createOrder(order);
         setNewOrderId(created.id);
         try { await sendSMS("+19296908573","New delivery from "+restaurant.name+"!\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+form.dropoffAddress+"\nFee: $"+form.deliveryFee); } catch(smsErr) { console.log("SMS failed but order saved"); }
+      }
       setSubmitted(true);
     } catch(e){ alert("Error. Try again."); }
     finally { setLoading(false); }
