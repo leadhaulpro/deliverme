@@ -134,15 +134,36 @@ function App() {
   );
 }
 
+function playChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [523, 659, 784].forEach((freq, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = freq;
+      o.type = "sine";
+      g.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.4);
+      o.start(ctx.currentTime + i * 0.15);
+      o.stop(ctx.currentTime + i * 0.15 + 0.4);
+    });
+  } catch(e) {}
+}
+
 function Dashboard() {
   const [orders,setOrders] = useState([]);
   const [filter,setFilter] = useState("all");
   const [loading,setLoading] = useState(true);
   const [error,setError] = useState(null);
+  const prevPendingCount = React.useRef(0);
 
   const loadOrders = async () => {
     try {
       const data = IS_DEMO ? demoOrders : await sb.getOrders();
+      const newPending = data.filter(o=>o.status==="pending").length;
+      if (!loading && newPending > prevPendingCount.current) { playChime(); }
+      prevPendingCount.current = newPending;
       setOrders(data);
     } catch(e) { setError("Could not load orders."); }
     finally { setLoading(false); }
