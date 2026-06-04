@@ -90,7 +90,7 @@ function timeAgo(iso) {
 function App() {
   const [page, setPage] = useState("dashboard");
   return (
-    <div style={{fontFamily:"'DM Sans',sans-serif",background:cream,minHeight:"100vh",color:ink}}>
+    <div style={{fontFamily:"'DM Sans',sans-serif",background:cream,minHeight:"100vh",color:ink}} onClick={unlockAudio}>
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0}
         .nav-btn{background:none;border:none;padding:8px 14px;font-size:12px;color:${muted};letter-spacing:.08em;text-transform:uppercase;border-bottom:2px solid transparent;cursor:pointer}
@@ -134,19 +134,28 @@ function App() {
   );
 }
 
+let audioCtx = null;
+
+function unlockAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
 function playChime() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     [523, 659, 784].forEach((freq, i) => {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
       o.frequency.value = freq;
       o.type = "sine";
-      g.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.4);
-      o.start(ctx.currentTime + i * 0.15);
-      o.stop(ctx.currentTime + i * 0.15 + 0.4);
+      g.gain.setValueAtTime(0.3, audioCtx.currentTime + i * 0.15);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.15 + 0.4);
+      o.start(audioCtx.currentTime + i * 0.15);
+      o.stop(audioCtx.currentTime + i * 0.15 + 0.4);
     });
   } catch(e) {}
 }
