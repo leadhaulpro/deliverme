@@ -402,9 +402,9 @@ function RestaurantPortal({ restaurant, slug }) {
 
   const statusLabel = {
     pending: "⏳ Waiting for driver",
-    ready_for_pickup: "🍔 Ready — driver coming",
-    active: "✅ Driver accepted",
-    picked_up: "🚗 On the way",
+    active: "✅ Driver accepted — prepare order",
+    ready_for_pickup: "🚗 Driver on the way",
+    picked_up: "📦 Order picked up",
     delivered: "✓ Delivered",
     cancelled: "✗ Cancelled"
   };
@@ -566,11 +566,11 @@ function RestaurantPortal({ restaurant, slug }) {
                     <div style={{fontSize:11,color:muted}}>{timeAgo(order.created_at)}</div>
                   </div>
                 </div>
-                {order.status === "pending" && (
+                {(order.status === "pending" || order.status === "active") && (
                   <button onClick={async()=>{
                     try { await sb.updateOrder(order.id,{status:"ready_for_pickup"}); loadRecentOrders(); } catch(e){}
                   }} style={{marginTop:10,background:"#FF6B1A",color:"white",border:"none",padding:"8px 16px",fontSize:12,borderRadius:4,cursor:"pointer",fontWeight:600,width:"100%"}}>
-                    🍔 Mark Order Ready for Pickup
+                    🍔 Order is Ready for Pickup
                   </button>
                 )}
               </div>
