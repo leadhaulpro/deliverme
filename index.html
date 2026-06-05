@@ -377,6 +377,9 @@ function RestaurantPortal({ restaurant, slug }) {
   const [orderId, setOrderId] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
   const [showOrders, setShowOrders] = useState(false);
+  const [tip, setTip] = useState(0);
+  const [customTip, setCustomTip] = useState("");
+  const [tipped, setTipped] = useState(false);
 
   const restaurantName = form.restaurantName || restaurant.name;
 
@@ -441,9 +444,6 @@ function RestaurantPortal({ restaurant, slug }) {
   };
 
   if (submitted) {
-    const [tip, setTip] = useState(0);
-    const [customTip, setCustomTip] = useState("");
-    const [tipped, setTipped] = useState(false);
     const tipOptions = [1, 2, 3, 5];
     const totalTip = customTip ? parseFloat(customTip) || 0 : tip;
 
