@@ -4,6 +4,9 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>DELIVERme</title>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="DELIVERme"/>
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -11,12 +14,22 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
 const SUPABASE_URL = "https://lbvbvxbrebornbluvywj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxidmJ2eGJyZWJvcm5ibHV2eXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTQ3NjYsImV4cCI6MjA5NjA5MDc2Nn0.RqJyPJQyK7Uwvq3WmO6VXyx1Vk2dHEzooYkdaFhkxJQ";
-const IS_DEMO = false;
+const DRIVER_PIN = "1234";
 
+// ── URL routing ──────────────────────────────────────────────
+function getRoute() {
+  const hash = window.location.hash.replace("#","");
+  if (hash.startsWith("restaurant/")) return { view: "restaurant", slug: hash.replace("restaurant/","") };
+  if (hash === "track") return { view: "track" };
+  if (hash === "dashboard") return { view: "dashboard" };
+  return { view: "home" };
+}
+
+// ── Supabase ─────────────────────────────────────────────────
 const sb = {
   async getOrders() {
     const res = await fetch(SUPABASE_URL+"/rest/v1/orders?order=created_at.desc", {
@@ -54,347 +67,514 @@ const sb = {
 };
 
 async function sendSMS(to, message) {
-  await fetch(SUPABASE_URL+"/functions/v1/send-sms", {
-    method: "POST",
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ to, message })
-  });
-}
-
-const demoOrders = [
-  { id: "ORD-001", restaurant_name: "Joe's Pizza", customer_name: "Sarah M.", customer_phone: "(860) 555-3344", dropoff_address: "78 Hollenbeck Ave, North Canaan, CT", order_details: "2x Margherita", notes: "Leave at door", status: "pending", delivery_fee: 6.00, created_at: new Date(Date.now()-2*60000).toISOString() },
-  { id: "ORD-002", restaurant_name: "Village Cafe", customer_name: "Tom K.", customer_phone: "(860) 555-7788", dropoff_address: "233 Ashley Falls Rd, Canaan, CT", order_details: "1x Sandwich", notes: "", status: "active", delivery_fee: 7.50, created_at: new Date(Date.now()-12*60000).toISOString() }
-];
-
-const restaurants = {
-  "joes-pizza": { name: "Joe's Pizza", address: "12 Main St, Canaan, CT 06018" },
-  "village-cafe": { name: "Village Cafe", address: "45 Railroad St, Canaan, CT 06018" }
-};
-
-const statusColors = {
-  pending: { bg: "#FFF3CD", text: "#856404", dot: "#FFC107" },
-  active: { bg: "#D1ECF1", text: "#0C5460", dot: "#17A2B8" },
-  delivered: { bg: "#D4EDDA", text: "#155724", dot: "#28A745" },
-  cancelled: { bg: "#F8D7DA", text: "#721C24", dot: "#DC3545" }
-};
-
-const cream="#F9F5EE", ink="#1A1612", rust="#C0392B", muted="#7A7065", border="#DDD5C8";
-
-function timeAgo(iso) {
-  const d = Math.floor((Date.now()-new Date(iso))/1000);
-  if(d<60) return d+"s ago";
-  if(d<3600) return Math.floor(d/60)+"m ago";
-  return Math.floor(d/3600)+"h ago";
-}
-
-function App() {
-  const [page, setPage] = useState("dashboard");
-  return (
-    <div style={{fontFamily:"'DM Sans',sans-serif",background:cream,minHeight:"100vh",color:ink}} onClick={unlockAudio}>
-      <style>{`
-        *{box-sizing:border-box;margin:0;padding:0}
-        .nav-btn{background:none;border:none;padding:8px 14px;font-size:12px;color:${muted};letter-spacing:.08em;text-transform:uppercase;border-bottom:2px solid transparent;cursor:pointer}
-        .nav-btn.active{color:${rust};border-bottom:2px solid ${rust}}
-        .card{background:white;border:1px solid ${border};border-radius:4px;padding:20px}
-        .order-card{background:white;border:1px solid ${border};border-radius:4px;padding:18px 20px;transition:box-shadow .2s}
-        .order-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.07)}
-        .btn-primary{background:${rust};color:white;border:none;padding:12px 24px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;border-radius:3px;cursor:pointer;transition:opacity .2s}
-        .btn-primary:hover{opacity:.88}
-        .btn-primary:disabled{opacity:.4;cursor:not-allowed}
-        .btn-outline{background:none;color:${ink};border:1px solid ${border};padding:10px 20px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;border-radius:3px;cursor:pointer}
-        .input{width:100%;padding:10px 12px;border:1px solid ${border};border-radius:3px;font-size:14px;background:${cream};color:${ink};outline:none;transition:border-color .2s}
-        .input:focus{border-color:${rust};background:white}
-        .label{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:${muted};margin-bottom:6px}
-        .tag{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500}
-        .dot{width:6px;height:6px;border-radius:50%}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-        .fade-in{animation:fadeIn .3s ease forwards}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-        .pulse{animation:pulse 1.8s infinite}
-      `}</style>
-      <header style={{borderBottom:"1px solid "+border,position:"sticky",top:0,zIndex:100,background:"white"}}>
-        <div style={{maxWidth:960,margin:"0 auto",padding:"0 24px",display:"flex",alignItems:"center",justifyContent:"space-between",height:56}}>
-          <div style={{display:"flex",alignItems:"center",gap:4}}>
-            <span style={{fontSize:20,fontWeight:900,color:rust,letterSpacing:"-.02em"}}>DELIVER</span>
-            <span style={{fontSize:20,fontWeight:700,color:ink,letterSpacing:"-.02em"}}>me</span>
-          </div>
-          <nav style={{display:"flex",gap:2}}>
-            <button className={"nav-btn"+(page==="dashboard"?" active":"")} onClick={()=>setPage("dashboard")}>Dashboard</button>
-            <button className={"nav-btn"+(page==="portal"?" active":"")} onClick={()=>setPage("portal")}>Restaurant</button>
-            <button className={"nav-btn"+(page==="track"?" active":"")} onClick={()=>setPage("track")}>Track</button>
-          </nav>
-        </div>
-      </header>
-      <main style={{maxWidth:960,margin:"0 auto",padding:"32px 24px"}}>
-        {page==="dashboard" && <Dashboard/>}
-        {page==="portal" && <RestaurantPortal/>}
-        {page==="track" && <TrackingPage/>}
-      </main>
-    </div>
-  );
-}
-
-let audioCtx = null;
-
-function unlockAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-}
-
-function playChime() {
   try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    [523, 659, 784].forEach((freq, i) => {
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.connect(g); g.connect(audioCtx.destination);
-      o.frequency.value = freq;
-      o.type = "sine";
-      g.gain.setValueAtTime(0.3, audioCtx.currentTime + i * 0.15);
-      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.15 + 0.4);
-      o.start(audioCtx.currentTime + i * 0.15);
-      o.stop(audioCtx.currentTime + i * 0.15 + 0.4);
+    await fetch(SUPABASE_URL+"/functions/v1/send-sms", {
+      method: "POST",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ to, message })
     });
   } catch(e) {}
 }
 
-function Dashboard() {
-  const [orders,setOrders] = useState([]);
-  const [filter,setFilter] = useState("all");
-  const [loading,setLoading] = useState(true);
-  const [error,setError] = useState(null);
-  const prevPendingCount = React.useRef(0);
+// ── Restaurants registry ──────────────────────────────────────
+// "general" is a universal portal link for any restaurant
+const RESTAURANTS = {
+  "general": { name: "", address: "", defaultFee: "6.00" },
+  "joes-pizza": { name: "Joe's Pizza", address: "12 Main St, Canaan, CT 06018", defaultFee: "6.00" },
+  "village-cafe": { name: "Village Cafe", address: "45 Railroad St, Canaan, CT 06018", defaultFee: "6.00" },
+  "canaan-diner": { name: "Canaan Diner", address: "85 Main St, Canaan, CT 06018", defaultFee: "6.00" }
+};
+
+// ── Chime ─────────────────────────────────────────────────────
+let audioCtx = null;
+function unlockAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+}
+function playChime() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    [523,659,784].forEach((freq,i) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      o.frequency.value = freq; o.type = "sine";
+      g.gain.setValueAtTime(0.3, audioCtx.currentTime+i*0.15);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+i*0.15+0.4);
+      o.start(audioCtx.currentTime+i*0.15);
+      o.stop(audioCtx.currentTime+i*0.15+0.4);
+    });
+  } catch(e) {}
+}
+
+// ── Styles ────────────────────────────────────────────────────
+const cream="#F9F5EE", ink="#1A1612", rust="#C0392B", muted="#7A7065", border="#DDD5C8", green="#27AE60";
+
+// ── App Root ──────────────────────────────────────────────────
+function App() {
+  const [route, setRoute] = useState(getRoute());
+  const [authed, setAuthed] = useState(!!sessionStorage.getItem("dm_authed"));
+
+  useEffect(() => {
+    const handler = () => setRoute(getRoute());
+    window.addEventListener("hashchange", handler);
+    return () => window.removeEventListener("hashchange", handler);
+  }, []);
+
+  const navigate = (hash) => { window.location.hash = hash; };
+
+  // Restaurant view — no auth needed
+  if (route.view === "restaurant") {
+    const restaurant = RESTAURANTS[route.slug];
+    if (!restaurant) return <NotFound/>;
+    return <RestaurantPortal restaurant={restaurant} slug={route.slug}/>;
+  }
+
+  // Track view — no auth needed
+  if (route.view === "track") return <TrackingPage navigate={navigate}/>;
+
+  // Home/landing page
+  if (route.view === "home") return <LandingPage navigate={navigate}/>;
+
+  // Dashboard — requires PIN
+  if (route.view === "dashboard") {
+    if (!authed) return <PinEntry onSuccess={() => { sessionStorage.setItem("dm_authed","1"); setAuthed(true); }}/>;
+    return <Dashboard navigate={navigate}/>;
+  }
+
+  return <LandingPage navigate={navigate}/>;
+}
+
+// ── Landing Page ──────────────────────────────────────────────
+function LandingPage({ navigate }) {
+  return (
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
+      <style>{`*{box-sizing:border-box;margin:0;padding:0}`}</style>
+      <div style={{textAlign:"center",maxWidth:400}}>
+        <div style={{marginBottom:32}}>
+          <span style={{fontSize:36,fontWeight:900,color:rust}}>DELIVER</span>
+          <span style={{fontSize:36,fontWeight:700,color:ink}}>me</span>
+          <p style={{color:muted,fontSize:14,marginTop:8,letterSpacing:".05em"}}>LOCAL DELIVERY · LITCHFIELD COUNTY, CT</p>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <button onClick={()=>navigate("track")} style={{background:ink,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:600}}>
+            📍 Track My Order
+          </button>
+          <button onClick={()=>navigate("dashboard")} style={{background:"none",color:muted,border:"1px solid "+border,padding:"12px 24px",fontSize:13,borderRadius:6,cursor:"pointer"}}>
+            Driver Login
+          </button>
+        </div>
+        <p style={{color:muted,fontSize:12,marginTop:24}}>Restaurant? Ask your DELIVERme driver for your portal link.</p>
+      </div>
+    </div>
+  );
+}
+
+// ── PIN Entry ─────────────────────────────────────────────────
+function PinEntry({ onSuccess }) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState(false);
+
+  const check = () => {
+    if (pin === DRIVER_PIN) { onSuccess(); }
+    else { setError(true); setPin(""); setTimeout(()=>setError(false),2000); }
+  };
+
+  return (
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{textAlign:"center",maxWidth:320,width:"100%"}}>
+        <div style={{marginBottom:32}}>
+          <span style={{fontSize:28,fontWeight:900,color:rust}}>DELIVER</span>
+          <span style={{fontSize:28,fontWeight:700,color:ink}}>me</span>
+          <p style={{color:muted,fontSize:13,marginTop:8}}>Driver Access</p>
+        </div>
+        <div style={{background:"white",border:"1px solid "+border,borderRadius:8,padding:24}}>
+          <p style={{fontSize:13,color:muted,marginBottom:16}}>Enter your PIN to continue</p>
+          <input
+            type="password" inputMode="numeric" maxLength={4}
+            value={pin} onChange={e=>setPin(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&check()}
+            style={{width:"100%",padding:"12px",fontSize:24,textAlign:"center",border:"1px solid "+(error?"#DC3545":border),borderRadius:6,background:cream,letterSpacing:8,outline:"none",marginBottom:12}}
+            placeholder="····" autoFocus
+          />
+          {error && <p style={{color:"#DC3545",fontSize:13,marginBottom:12}}>Wrong PIN. Try again.</p>}
+          <button onClick={check} style={{width:"100%",background:rust,color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:600}}>
+            Enter Dashboard
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Driver Dashboard ──────────────────────────────────────────
+function Dashboard({ navigate }) {
+  const [orders, setOrders] = useState([]);
+  const [filter, setFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const prevPending = useRef(0);
 
   const loadOrders = async () => {
     try {
-      const data = IS_DEMO ? demoOrders : await sb.getOrders();
-      const newPending = data.filter(o=>o.status==="pending").length;
-      if (!loading && newPending > prevPendingCount.current) { playChime(); }
-      prevPendingCount.current = newPending;
+      const data = await sb.getOrders();
+      const newPending = data.filter(o=>o.status==="pending"||o.status==="ready_for_pickup").length;
+      if (!loading && newPending > prevPending.current) playChime();
+      prevPending.current = newPending;
       setOrders(data);
-    } catch(e) { setError("Could not load orders."); }
+    } catch(e) {}
     finally { setLoading(false); }
   };
 
-  useEffect(()=>{ loadOrders(); const t=setInterval(loadOrders,15000); return()=>clearInterval(t); },[]);
+  useEffect(() => {
+    loadOrders();
+    const t = setInterval(loadOrders, 15000);
+    return () => clearInterval(t);
+  }, []);
 
-  const updateStatus = async (id,newStatus) => {
-    if(IS_DEMO){ setOrders(prev=>prev.map(o=>o.id===id?{...o,status:newStatus}:o)); return; }
+  const updateStatus = async (id, newStatus) => {
     try {
-      await sb.updateOrder(id,{status:newStatus});
-      setOrders(prev=>prev.map(o=>o.id===id?{...o,status:newStatus}:o));
-      if(newStatus==="active"){
-        const order=orders.find(o=>o.id===id);
-        if(order) await sendSMS(order.customer_phone,"Hi "+order.customer_name+"! Your order from "+order.restaurant_name+" is on the way.");
+      await sb.updateOrder(id, { status: newStatus });
+      setOrders(prev => prev.map(o => o.id===id ? {...o, status:newStatus} : o));
+      if (newStatus === "active") {
+        const order = orders.find(o=>o.id===id);
+        if (order) sendSMS(order.customer_phone, "Hi "+order.customer_name+"! Your order from "+order.restaurant_name+" is on the way. Track: "+window.location.origin+"#track");
       }
-    } catch(e){ alert("Failed to update."); }
+    } catch(e) { alert("Failed to update."); }
   };
 
-  const filtered = filter==="all"?orders:orders.filter(o=>o.status===filter);
-  const pending=orders.filter(o=>o.status==="pending").length;
-  const active=orders.filter(o=>o.status==="active").length;
-  const delivered=orders.filter(o=>o.status==="delivered").length;
+  const filtered = filter==="all" ? orders : orders.filter(o=>o.status===filter);
+  const pending = orders.filter(o=>o.status==="pending").length;
+  const active = orders.filter(o=>o.status==="active").length;
+  const delivered = orders.filter(o=>o.status==="delivered").length;
+
+  const statusColors = {
+    pending:{bg:"#FFF3CD",text:"#856404",dot:"#FFC107"},
+    ready_for_pickup:{bg:"#FFE8D6",text:"#B94A00",dot:"#FF6B1A"},
+    active:{bg:"#D1ECF1",text:"#0C5460",dot:"#17A2B8"},
+    picked_up:{bg:"#E8D5F5",text:"#6B1FA3",dot:"#9B59B6"},
+    delivered:{bg:"#D4EDDA",text:"#155724",dot:"#28A745"},
+    cancelled:{bg:"#F8D7DA",text:"#721C24",dot:"#DC3545"}
+  };
+
+  function timeAgo(iso) {
+    const d=Math.floor((Date.now()-new Date(iso))/1000);
+    if(d<60) return d+"s ago";
+    if(d<3600) return Math.floor(d/60)+"m ago";
+    return Math.floor(d/3600)+"h ago";
+  }
 
   return (
-    <div className="fade-in">
-      <div style={{marginBottom:28,display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",color:ink}} onClick={unlockAudio}>
+      <style>{`
+        *{box-sizing:border-box;margin:0;padding:0}
+        .card{background:white;border:1px solid ${border};border-radius:6px;padding:16px}
+        .order-card{background:white;border:1px solid ${border};border-radius:6px;padding:16px;transition:box-shadow .2s}
+        .order-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+        .btn{border:none;padding:10px 18px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;border-radius:4px;cursor:pointer;font-weight:600;transition:opacity .2s}
+        .btn-red{background:${rust};color:white}
+        .btn-red:hover{opacity:.88}
+        .btn-outline{background:none;color:${ink};border:1px solid ${border}}
+        .btn-outline:hover{border-color:${ink}}
+        .tag{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+        .dot{width:6px;height:6px;border-radius:50%}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        .pulse{animation:pulse 1.8s infinite}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+        .fade-in{animation:fadeIn .25s ease}
+      `}</style>
+      <header style={{background:"white",borderBottom:"1px solid "+border,padding:"0 20px",height:52,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
         <div>
-          <h1 style={{fontSize:28,fontWeight:900,letterSpacing:"-.02em"}}>Your Deliveries</h1>
-          <p style={{color:muted,fontSize:13,marginTop:4}}>Canaan & surrounding areas · Litchfield County, CT</p>
+          <span style={{fontWeight:900,color:rust,fontSize:18}}>DELIVER</span>
+          <span style={{fontWeight:700,color:ink,fontSize:18}}>me</span>
+          <span style={{fontSize:11,color:muted,marginLeft:8,textTransform:"uppercase",letterSpacing:".08em"}}>Dashboard</span>
         </div>
         <div style={{display:"flex",gap:8}}>
-          <button className="btn-outline" onClick={()=>{unlockAudio();playChime();}} style={{fontSize:11}}>🔔 Test Sound</button>
-          <button className="btn-outline" onClick={loadOrders} style={{fontSize:11}}>Refresh</button>
+          <button className="btn btn-outline" style={{padding:"6px 12px",fontSize:11}} onClick={()=>{unlockAudio();playChime();}}>🔔 Test</button>
+          <button className="btn btn-outline" style={{padding:"6px 12px",fontSize:11}} onClick={loadOrders}>↻</button>
+          <button className="btn btn-outline" style={{padding:"6px 12px",fontSize:11}} onClick={()=>{sessionStorage.removeItem("dm_authed");window.location.hash="";}}>Exit</button>
         </div>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:28}}>
-        {[{label:"Pending",value:pending,color:"#FFC107"},{label:"Active",value:active,color:"#17A2B8"},{label:"Delivered",value:delivered,color:"#28A745"}].map(s=>(
-          <div key={s.label} className="card" style={{textAlign:"center"}}>
-            <div style={{fontSize:32,fontWeight:900,color:s.color}}>{s.value}</div>
-            <div style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginTop:4}}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{display:"flex",gap:8,marginBottom:16}}>
-        {["all","pending","active","delivered"].map(f=>(
-          <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(filter===f?ink:border),background:filter===f?ink:"transparent",color:filter===f?"white":muted,borderRadius:3,cursor:"pointer"}}>{f}</button>
-        ))}
-      </div>
-      {loading && <div style={{textAlign:"center",padding:"48px 0",color:muted}}>Loading orders...</div>}
-      {error && <div style={{padding:16,background:"#FFF3CD",borderRadius:4,color:"#856404",fontSize:13}}>{error}</div>}
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {!loading&&filtered.length===0&&<div style={{textAlign:"center",padding:"48px 0",color:muted,fontSize:13}}>No orders here</div>}
-        {filtered.map(order=>{
-          const sc=statusColors[order.status]||statusColors.pending;
-          return (
-            <div key={order.id} className="order-card">
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
-                <div style={{flex:1,minWidth:220}}>
-                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-                    <span style={{fontWeight:700,fontSize:15}}>{order.restaurant_name}</span>
-                    <span className="tag" style={{background:sc.bg,color:sc.text}}>
-                      <span className={"dot"+(order.status==="active"?" pulse":"")} style={{background:sc.dot}}/>
-                      {order.status}
-                    </span>
-                  </div>
-                  <div style={{fontSize:13,color:ink,marginBottom:3}}><strong>{order.customer_name}</strong> · {order.customer_phone}</div>
-                  <div style={{fontSize:13,color:muted,marginBottom:3}}>Drop-off: {order.dropoff_address}</div>
-                  {order.order_details&&<div style={{fontSize:12,color:muted}}>Order: {order.order_details}</div>}
-                  {order.notes&&<div style={{fontSize:12,color:muted,fontStyle:"italic"}}>"{order.notes}"</div>}
-                </div>
-                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
-                  <div style={{fontSize:18,fontWeight:700,color:rust}}>${Number(order.delivery_fee).toFixed(2)}</div>
-                  <div style={{fontSize:11,color:muted}}>{timeAgo(order.created_at)}</div>
-                  <div style={{display:"flex",gap:6}}>
-                    {order.status==="pending"&&<>
-                      <button className="btn-primary" style={{padding:"8px 16px",fontSize:11}} onClick={()=>updateStatus(order.id,"active")}>Accept</button>
-                      <button className="btn-outline" style={{padding:"8px 14px",fontSize:11}} onClick={()=>updateStatus(order.id,"cancelled")}>Decline</button>
-                    </>}
-                    {order.status==="active"&&<button className="btn-primary" style={{padding:"8px 16px",fontSize:11}} onClick={()=>updateStatus(order.id,"delivered")}>Mark Delivered</button>}
-                    {(order.status==="delivered"||order.status==="cancelled")&&<span style={{fontSize:11,color:muted}}>Closed</span>}
-                  </div>
-                </div>
-              </div>
+      </header>
+
+      <main style={{maxWidth:800,margin:"0 auto",padding:"20px 16px"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
+          {[{label:"Pending",val:pending,color:"#F39C12"},{label:"Active",val:active,color:"#2980B9"},{label:"Delivered",val:delivered,color:green}].map(s=>(
+            <div key={s.label} className="card" style={{textAlign:"center"}}>
+              <div style={{fontSize:28,fontWeight:900,color:s.color}}>{s.val}</div>
+              <div style={{fontSize:10,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginTop:2}}>{s.label}</div>
             </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function RestaurantPortal() {
-  const restaurant = restaurants["joes-pizza"];
-  const [form,setForm] = useState({customerName:"",customerPhone:"",dropoffAddress:"",orderDetails:"",notes:"",deliveryFee:"6.00"});
-  const [submitted,setSubmitted] = useState(false);
-  const [loading,setLoading] = useState(false);
-  const [newOrderId,setNewOrderId] = useState(null);
-
-  const handleChange = e => setForm(prev=>({...prev,[e.target.name]:e.target.value}));
-
-  const handleSubmit = async () => {
-    if(!form.customerName||!form.customerPhone||!form.dropoffAddress) return;
-    setLoading(true);
-    try {
-      if(IS_DEMO){
-        await new Promise(r=>setTimeout(r,1200));
-        setNewOrderId("ORD-"+Math.floor(Math.random()*9000+1000));
-      } else {
-        const order={restaurant_name:restaurant.name,restaurant_address:restaurant.address,customer_name:form.customerName,customer_phone:form.customerPhone,dropoff_address:form.dropoffAddress,order_details:form.orderDetails,notes:form.notes,delivery_fee:parseFloat(form.deliveryFee)||6,status:"pending",created_at:new Date().toISOString()};
-        const [created]=await sb.createOrder(order);
-        setNewOrderId(created.id);
-        try { await sendSMS("+19296908573","New delivery from "+restaurant.name+"!\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+form.dropoffAddress+"\nFee: $"+form.deliveryFee); } catch(smsErr) { console.log("SMS failed but order saved"); }
-      }
-      setSubmitted(true);
-    } catch(e){ alert("Error. Try again."); }
-    finally { setLoading(false); }
-  };
-
-  if(submitted) return (
-    <div className="fade-in" style={{maxWidth:480,margin:"0 auto",textAlign:"center",paddingTop:48}}>
-      <div style={{fontSize:48,marginBottom:16}}>✓</div>
-      <h2 style={{fontSize:26,fontWeight:900,marginBottom:8}}>Delivery Requested!</h2>
-      <p style={{color:muted,fontSize:14,marginBottom:8}}>The driver has been notified.</p>
-      {newOrderId&&<p style={{fontSize:12,color:muted,marginBottom:24}}>Order ID: <strong>{newOrderId}</strong></p>}
-      <button className="btn-primary" onClick={()=>{setSubmitted(false);setForm({customerName:"",customerPhone:"",dropoffAddress:"",orderDetails:"",notes:"",deliveryFee:"6.00"});}}>New Request</button>
-    </div>
-  );
-
-  return (
-    <div className="fade-in" style={{maxWidth:520,margin:"0 auto"}}>
-      <div style={{marginBottom:28}}>
-        <p style={{fontSize:11,letterSpacing:".12em",textTransform:"uppercase",color:rust,marginBottom:4}}>Restaurant Portal</p>
-        <h1 style={{fontSize:28,fontWeight:900}}>{restaurant.name}</h1>
-        <p style={{color:muted,fontSize:13,marginTop:4}}>{restaurant.address}</p>
-      </div>
-      <div className="card" style={{display:"flex",flexDirection:"column",gap:18}}>
-        <div><label className="label">Customer Name *</label><input className="input" name="customerName" value={form.customerName} onChange={handleChange} placeholder="Jane Smith"/></div>
-        <div><label className="label">Customer Phone *</label><input className="input" name="customerPhone" value={form.customerPhone} onChange={handleChange} placeholder="(860) 555-0000"/></div>
-        <div><label className="label">Drop-off Address *</label><input className="input" name="dropoffAddress" value={form.dropoffAddress} onChange={handleChange} placeholder="123 Main St, North Canaan, CT"/></div>
-        <div><label className="label">Order Details</label><textarea className="input" name="orderDetails" value={form.orderDetails} onChange={handleChange} placeholder="2x Margherita..." rows={3} style={{resize:"vertical"}}/></div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <div><label className="label">Delivery Fee ($)</label><input className="input" name="deliveryFee" value={form.deliveryFee} onChange={handleChange} type="number" min="0" step="0.50"/></div>
-          <div><label className="label">Notes</label><input className="input" name="notes" value={form.notes} onChange={handleChange} placeholder="Leave at door..."/></div>
+          ))}
         </div>
-        <div style={{borderTop:"1px solid "+border,paddingTop:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div style={{fontSize:12,color:muted}}>Pickup from <strong>{restaurant.name}</strong></div>
-          <button className="btn-primary" onClick={handleSubmit} disabled={loading||!form.customerName||!form.customerPhone||!form.dropoffAddress}>{loading?"Sending...":"Request Delivery"}</button>
+
+        <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+          {["all","pending","active","delivered"].map(f=>(
+            <button key={f} onClick={()=>setFilter(f)} style={{padding:"5px 14px",fontSize:11,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(filter===f?ink:border),background:filter===f?ink:"transparent",color:filter===f?"white":muted,borderRadius:4,cursor:"pointer"}}>
+              {f}
+            </button>
+          ))}
         </div>
-      </div>
-    </div>
-  );
-}
 
-function TrackingPage() {
-  const [orderId,setOrderId] = useState("");
-  const [tracked,setTracked] = useState(null);
-  const [loading,setLoading] = useState(false);
-  const [notFound,setNotFound] = useState(false);
+        {loading && <div style={{textAlign:"center",padding:"40px 0",color:muted}}>Loading orders...</div>}
 
-  const track = async () => {
-    if(!orderId) return;
-    setLoading(true); setNotFound(false); setTracked(null);
-    try {
-      if(IS_DEMO){
-        await new Promise(r=>setTimeout(r,800));
-        const found=demoOrders.find(o=>o.id.toLowerCase()===orderId.toLowerCase());
-        found?setTracked(found):setNotFound(true);
-      } else {
-        const found=await sb.getOrderById(orderId);
-        found?setTracked(found):setNotFound(true);
-      }
-    } catch{ setNotFound(true); }
-    finally{ setLoading(false); }
-  };
-
-  const steps=["Order Received","Driver Accepted","Picked Up","On The Way","Delivered"];
-  const stepIndex=!tracked?0:tracked.status==="pending"?1:tracked.status==="active"?3:tracked.status==="delivered"?5:0;
-
-  return (
-    <div className="fade-in" style={{maxWidth:480,margin:"0 auto"}}>
-      <div style={{marginBottom:28}}>
-        <p style={{fontSize:11,letterSpacing:".12em",textTransform:"uppercase",color:rust,marginBottom:4}}>Order Tracking</p>
-        <h1 style={{fontSize:28,fontWeight:900}}>Track Your Delivery</h1>
-      </div>
-      <div className="card" style={{marginBottom:20}}>
-        <label className="label">Order ID</label>
-        <div style={{display:"flex",gap:10}}>
-          <input className="input" value={orderId} onChange={e=>setOrderId(e.target.value)} onKeyDown={e=>e.key==="Enter"&&track()} placeholder="Enter your order ID"/>
-          <button className="btn-primary" onClick={track} disabled={loading||!orderId} style={{whiteSpace:"nowrap"}}>{loading?"...":"Track"}</button>
-        </div>
-      </div>
-      {tracked&&(
-        <div className="card fade-in">
-          <div style={{marginBottom:20}}>
-            <div style={{display:"flex",justifyContent:"space-between"}}>
-              <span style={{fontWeight:700,fontSize:16}}>{tracked.restaurant_name}</span>
-              <span style={{fontSize:13,color:muted}}>{tracked.id}</span>
-            </div>
-            <div style={{fontSize:13,color:muted,marginTop:4}}>To: {tracked.dropoff_address}</div>
-            <div style={{fontSize:13,color:muted}}>For: {tracked.customer_name}</div>
-          </div>
-          {steps.map((step,i)=>{
-            const done=i<stepIndex,active=i===stepIndex-1;
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {!loading && filtered.length===0 && <div style={{textAlign:"center",padding:"40px 0",color:muted,fontSize:13}}>No orders here</div>}
+          {filtered.map(order => {
+            const sc = statusColors[order.status] || statusColors.pending;
             return (
-              <div key={step} style={{display:"flex",alignItems:"center",gap:14}}>
-                <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:20}}>
-                  <div style={{width:20,height:20,borderRadius:"50%",background:done||active?rust:border,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                    {done&&<span style={{color:"white",fontSize:10}}>✓</span>}
-                    {active&&<span className="pulse" style={{width:8,height:8,borderRadius:"50%",background:"white",display:"block"}}/>}
+              <div key={order.id} className="order-card fade-in">
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
+                  <div style={{flex:1,minWidth:200}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                      <span style={{fontWeight:700,fontSize:15}}>{order.restaurant_name}</span>
+                      <span className="tag" style={{background:sc.bg,color:sc.text}}>
+                        <span className={"dot"+(order.status==="active"?" pulse":"")} style={{background:sc.dot}}/>
+                        {order.status}
+                      </span>
+                    </div>
+                    <div style={{fontSize:13,marginBottom:2}}><strong>{order.customer_name}</strong> · {order.customer_phone}</div>
+                    <div style={{fontSize:13,color:muted,marginBottom:2}}>📍 {order.dropoff_address}</div>
+                    {order.order_details && <div style={{fontSize:12,color:muted}}>🧾 {order.order_details}</div>}
+                    {order.notes && <div style={{fontSize:12,color:muted,fontStyle:"italic"}}>"{order.notes}"</div>}
                   </div>
-                  {i<steps.length-1&&<div style={{width:2,height:28,background:done?rust:border}}/>}
-                </div>
-                <div style={{paddingBottom:i<steps.length-1?20:0}}>
-                  <div style={{fontSize:13,fontWeight:active?600:400,color:done||active?ink:muted}}>{step}</div>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+                    <div style={{fontSize:20,fontWeight:900,color:rust}}>${Number(order.delivery_fee).toFixed(2)}</div>
+                    <div style={{fontSize:11,color:muted}}>{timeAgo(order.created_at)}</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                      {order.status==="pending" && <>
+                        <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11}} onClick={()=>updateStatus(order.id,"active")}>Accept</button>
+                        <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11}} onClick={()=>updateStatus(order.id,"cancelled")}>Decline</button>
+                      </>}
+                      {order.status==="ready_for_pickup" && <>
+                        <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11,background:"#FF6B1A"}} onClick={()=>updateStatus(order.id,"picked_up")}>Picked Up ✓</button>
+                      </>}
+                      {order.status==="active" && <>
+                        <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11,background:"#9B59B6"}} onClick={()=>updateStatus(order.id,"picked_up")}>Picked Up</button>
+                      </>}
+                      {order.status==="picked_up" && <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11}} onClick={()=>updateStatus(order.id,"delivered")}>Mark Delivered</button>}
+                      {(order.status==="delivered"||order.status==="cancelled") && <span style={{fontSize:11,color:muted}}>Closed</span>}
+                    </div>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
-      )}
-      {notFound&&<div style={{textAlign:"center",color:muted,fontSize:13,paddingTop:16}}>No order found with that ID.</div>}
+      </main>
+    </div>
+  );
+}
+
+// ── Restaurant Portal ─────────────────────────────────────────
+function RestaurantPortal({ restaurant, slug }) {
+  const isGeneral = !restaurant.name;
+  const [form, setForm] = useState({
+    restaurantName: restaurant.name || "",
+    restaurantAddress: restaurant.address || "",
+    customerName:"",customerPhone:"",dropoffAddress:"",orderDetails:"",notes:"",deliveryFee:restaurant.defaultFee
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [orderId, setOrderId] = useState(null);
+
+  const handleChange = e => setForm(prev=>({...prev,[e.target.name]:e.target.value}));
+
+  const submit = async () => {
+    if(!form.customerName||!form.customerPhone||!form.dropoffAddress) return;
+    if(isGeneral && !form.restaurantName) return;
+    setLoading(true);
+    try {
+      const order = {
+        restaurant_name: form.restaurantName || restaurant.name,
+        restaurant_address: form.restaurantAddress || restaurant.address,
+        restaurant_slug: slug,
+        customer_name:form.customerName, customer_phone:form.customerPhone,
+        dropoff_address:form.dropoffAddress, order_details:form.orderDetails,
+        notes:form.notes, delivery_fee:parseFloat(form.deliveryFee)||6,
+        status:"pending", created_at:new Date().toISOString()
+      };
+      const [created] = await sb.createOrder(order);
+      setOrderId(created.id);
+      sendSMS("+19296908573","🚗 New delivery from "+(form.restaurantName||restaurant.name)+"!\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+form.dropoffAddress+"\nFee: $"+form.deliveryFee);
+      setSubmitted(true);
+    } catch(e) { alert("Error submitting. Please try again."); }
+    finally { setLoading(false); }
+  };
+
+  if (submitted) return (
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{textAlign:"center",maxWidth:400}}>
+        <div style={{fontSize:56,marginBottom:12}}>✓</div>
+        <h2 style={{fontSize:24,fontWeight:900,color:ink,marginBottom:8}}>Delivery Requested!</h2>
+        <p style={{color:muted,fontSize:14,marginBottom:4}}>Your driver has been notified.</p>
+        {orderId && <p style={{fontSize:12,color:muted,marginBottom:24}}>Order ID: <strong>{orderId.slice(0,8).toUpperCase()}</strong></p>}
+        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+          <button onClick={async()=>{
+            try { await sb.updateOrder(orderId,{status:"ready_for_pickup"}); alert("Driver notified — order is ready for pickup!"); } catch(e){ alert("Could not update status."); }
+          }} style={{background:"#FF6B1A",color:"white",border:"none",padding:"14px 28px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700}}>
+            🍔 Order is Ready for Pickup!
+          </button>
+          <button onClick={()=>{setSubmitted(false);setOrderId(null);setForm({restaurantName:form.restaurantName,restaurantAddress:form.restaurantAddress,customerName:"",customerPhone:"",dropoffAddress:"",orderDetails:"",notes:"",deliveryFee:restaurant.defaultFee});}} style={{background:"none",color:muted,border:"1px solid "+border,padding:"11px 28px",fontSize:13,borderRadius:6,cursor:"pointer"}}>
+            New Request
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",color:ink}}>
+      <style>{`*{box-sizing:border-box;margin:0;padding:0} input,textarea{font-family:inherit}`}</style>
+      <header style={{background:"white",borderBottom:"1px solid #DDD5C8",padding:"14px 20px"}}>
+        <div style={{maxWidth:520,margin:"0 auto"}}>
+          <span style={{fontWeight:900,color:rust,fontSize:16}}>DELIVER</span>
+          <span style={{fontWeight:700,color:ink,fontSize:16}}>me</span>
+          <span style={{fontSize:11,color:muted,marginLeft:8}}>· Restaurant Portal</span>
+        </div>
+      </header>
+      <main style={{maxWidth:520,margin:"0 auto",padding:"24px 16px"}}>
+        <div style={{marginBottom:24}}>
+          <h1 style={{fontSize:24,fontWeight:900}}>{restaurant.name}</h1>
+          <p style={{color:muted,fontSize:13,marginTop:4}}>{restaurant.address}</p>
+        </div>
+        <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20,display:"flex",flexDirection:"column",gap:16}}>
+          {isGeneral && <>
+            <div>
+              <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Restaurant Name *</label>
+              <input name="restaurantName" value={form.restaurantName} onChange={handleChange} placeholder="Your restaurant name"
+                style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
+            </div>
+            <div>
+              <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Restaurant Address</label>
+              <input name="restaurantAddress" value={form.restaurantAddress} onChange={handleChange} placeholder="Your pickup address"
+                style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
+            </div>
+            <div style={{borderTop:"1px solid #DDD5C8",paddingTop:4}}/>
+          </>}
+          {[
+            {label:"Customer Name *",name:"customerName",placeholder:"Jane Smith",type:"text"},
+            {label:"Customer Phone *",name:"customerPhone",placeholder:"(860) 555-0000",type:"tel"},
+            {label:"Drop-off Address *",name:"dropoffAddress",placeholder:"123 Main St, North Canaan, CT",type:"text"},
+          ].map(f=>(
+            <div key={f.name}>
+              <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>{f.label}</label>
+              <input name={f.name} value={form[f.name]} onChange={handleChange} placeholder={f.placeholder} type={f.type}
+                style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
+            </div>
+          ))}
+          <div>
+            <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Order Details</label>
+            <textarea name="orderDetails" value={form.orderDetails} onChange={handleChange} placeholder="2x Margherita, 1x Caesar salad..." rows={3}
+              style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div>
+              <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Delivery Fee ($)</label>
+              <input name="deliveryFee" value={form.deliveryFee} onChange={handleChange} type="number" min="0" step="0.50"
+                style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
+            </div>
+            <div>
+              <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Notes</label>
+              <input name="notes" value={form.notes} onChange={handleChange} placeholder="Leave at door..."
+                style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
+            </div>
+          </div>
+          <div style={{borderTop:"1px solid #DDD5C8",paddingTop:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:12,color:muted}}>Pickup: <strong>{form.restaurantName || restaurant.name || "Your Restaurant"}</strong></span>
+            <button onClick={submit} disabled={loading||!form.customerName||!form.customerPhone||!form.dropoffAddress||(isGeneral&&!form.restaurantName)}
+              style={{background:loading||!form.customerName||!form.customerPhone||!form.dropoffAddress?"#ccc":rust,color:"white",border:"none",padding:"11px 22px",fontSize:13,borderRadius:6,cursor:"pointer",fontWeight:600}}>
+              {loading ? "Sending..." : "Request Delivery →"}
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ── Tracking Page ─────────────────────────────────────────────
+function TrackingPage({ navigate }) {
+  const [orderId, setOrderId] = useState("");
+  const [tracked, setTracked] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+
+  const track = async () => {
+    if (!orderId) return;
+    setLoading(true); setNotFound(false); setTracked(null);
+    try {
+      const found = await sb.getOrderById(orderId);
+      found ? setTracked(found) : setNotFound(true);
+    } catch { setNotFound(true); }
+    finally { setLoading(false); }
+  };
+
+  const steps = ["Order Received","Driver Accepted","Picked Up","On The Way","Delivered"];
+  const stepIndex = !tracked ? 0 : tracked.status==="pending" ? 1 : tracked.status==="active" ? 3 : tracked.status==="delivered" ? 5 : 0;
+
+  return (
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",color:ink}}>
+      <style>{`*{box-sizing:border-box;margin:0;padding:0}`}</style>
+      <header style={{background:"white",borderBottom:"1px solid #DDD5C8",padding:"14px 20px"}}>
+        <div style={{maxWidth:480,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div>
+            <span style={{fontWeight:900,color:rust,fontSize:16}}>DELIVER</span>
+            <span style={{fontWeight:700,color:ink,fontSize:16}}>me</span>
+          </div>
+          <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>← Home</button>
+        </div>
+      </header>
+      <main style={{maxWidth:480,margin:"0 auto",padding:"24px 16px"}}>
+        <h1 style={{fontSize:24,fontWeight:900,marginBottom:20}}>Track Your Delivery</h1>
+        <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20,marginBottom:16}}>
+          <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:6}}>Order ID</label>
+          <div style={{display:"flex",gap:10}}>
+            <input value={orderId} onChange={e=>setOrderId(e.target.value)} onKeyDown={e=>e.key==="Enter"&&track()} placeholder="Enter your order ID"
+              style={{flex:1,padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+            <button onClick={track} disabled={loading||!orderId}
+              style={{background:rust,color:"white",border:"none",padding:"10px 18px",borderRadius:4,cursor:"pointer",fontWeight:600,fontSize:13}}>
+              {loading ? "..." : "Track"}
+            </button>
+          </div>
+        </div>
+        {tracked && (
+          <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20}}>
+            <div style={{marginBottom:16}}>
+              <div style={{fontWeight:700,fontSize:16}}>{tracked.restaurant_name}</div>
+              <div style={{fontSize:13,color:muted,marginTop:4}}>To: {tracked.dropoff_address}</div>
+              <div style={{fontSize:13,color:muted}}>For: {tracked.customer_name}</div>
+            </div>
+            {steps.map((step,i) => {
+              const done=i<stepIndex, active=i===stepIndex-1;
+              return (
+                <div key={step} style={{display:"flex",alignItems:"center",gap:14}}>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:20}}>
+                    <div style={{width:20,height:20,borderRadius:"50%",background:done||active?rust:"#DDD5C8",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      {done && <span style={{color:"white",fontSize:10}}>✓</span>}
+                      {active && <span style={{width:8,height:8,borderRadius:"50%",background:"white",display:"block"}}/>}
+                    </div>
+                    {i<steps.length-1 && <div style={{width:2,height:28,background:done?rust:"#DDD5C8"}}/>}
+                  </div>
+                  <div style={{paddingBottom:i<steps.length-1?20:0}}>
+                    <div style={{fontSize:13,fontWeight:active?700:400,color:done||active?ink:muted}}>{step}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {notFound && <p style={{textAlign:"center",color:muted,fontSize:13,paddingTop:16}}>No order found with that ID.</p>}
+      </main>
+    </div>
+  );
+}
+
+function NotFound() {
+  return (
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{textAlign:"center"}}>
+        <p style={{fontSize:48,marginBottom:16}}>🤷</p>
+        <p style={{color:muted}}>Restaurant not found. Check your link.</p>
+        <a href="#" style={{color:rust,fontSize:13,marginTop:12,display:"block"}}>← Go Home</a>
+      </div>
     </div>
   );
 }
