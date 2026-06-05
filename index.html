@@ -374,6 +374,46 @@ function RestaurantPortal({ restaurant, slug }) {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [orderId, setOrderId] = useState(null);
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [showOrders, setShowOrders] = useState(false);
+
+  const restaurantName = form.restaurantName || restaurant.name;
+
+  const loadRecentOrders = async () => {
+    if (!restaurantName) return;
+    try {
+      const all = await sb.getOrders();
+      const mine = all.filter(o => o.restaurant_name === restaurantName);
+      setRecentOrders(mine.slice(0, 10));
+    } catch(e) {}
+  };
+
+  useEffect(() => { if (showOrders) loadRecentOrders(); }, [showOrders]);
+
+  const statusColors = {
+    pending:{bg:"#FFF3CD",text:"#856404",dot:"#FFC107"},
+    ready_for_pickup:{bg:"#FFE8D6",text:"#B94A00",dot:"#FF6B1A"},
+    active:{bg:"#D1ECF1",text:"#0C5460",dot:"#17A2B8"},
+    picked_up:{bg:"#E8D5F5",text:"#6B1FA3",dot:"#9B59B6"},
+    delivered:{bg:"#D4EDDA",text:"#155724",dot:"#28A745"},
+    cancelled:{bg:"#F8D7DA",text:"#721C24",dot:"#DC3545"}
+  };
+
+  const statusLabel = {
+    pending: "⏳ Waiting for driver",
+    ready_for_pickup: "🍔 Ready — driver coming",
+    active: "✅ Driver accepted",
+    picked_up: "🚗 On the way",
+    delivered: "✓ Delivered",
+    cancelled: "✗ Cancelled"
+  };
+
+  function timeAgo(iso) {
+    const d=Math.floor((Date.now()-new Date(iso))/1000);
+    if(d<60) return d+"s ago";
+    if(d<3600) return Math.floor(d/60)+"m ago";
+    return Math.floor(d/3600)+"h ago";
+  }
 
   const handleChange = e => setForm(prev=>({...prev,[e.target.name]:e.target.value}));
 
@@ -484,6 +524,57 @@ function RestaurantPortal({ restaurant, slug }) {
               {loading ? "Sending..." : "Request Delivery →"}
             </button>
           </div>
+        </div>
+
+        {/* Recent Orders Section */}
+        <div style={{marginTop:32}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <h2 style={{fontSize:18,fontWeight:700}}>Recent Orders</h2>
+            <button onClick={()=>{ setShowOrders(true); loadRecentOrders(); }} style={{background:"none",border:"1px solid #DDD5C8",padding:"6px 14px",borderRadius:4,fontSize:12,cursor:"pointer",color:muted}}>
+              ↻ Refresh
+            </button>
+          </div>
+          {!showOrders && (
+            <div style={{textAlign:"center",padding:"24px 0",color:muted,fontSize:13}}>
+              <button onClick={()=>{ setShowOrders(true); loadRecentOrders(); }} style={{background:ink,color:"white",border:"none",padding:"10px 20px",borderRadius:6,cursor:"pointer",fontSize:13}}>
+                View My Orders
+              </button>
+            </div>
+          )}
+          {showOrders && recentOrders.length === 0 && (
+            <div style={{textAlign:"center",padding:"24px 0",color:muted,fontSize:13}}>No orders yet</div>
+          )}
+          {showOrders && recentOrders.map(order => {
+            const sc = statusColors[order.status] || statusColors.pending;
+            return (
+              <div key={order.id} style={{background:"white",border:"1px solid #DDD5C8",borderRadius:6,padding:16,marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                      <strong style={{fontSize:14}}>{order.customer_name}</strong>
+                      <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,background:sc.bg,color:sc.text}}>
+                        <span style={{width:6,height:6,borderRadius:"50%",background:sc.dot,display:"inline-block"}}/>
+                        {statusLabel[order.status] || order.status}
+                      </span>
+                    </div>
+                    <div style={{fontSize:12,color:muted}}>📍 {order.dropoff_address}</div>
+                    {order.order_details && <div style={{fontSize:12,color:muted}}>🧾 {order.order_details}</div>}
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontWeight:700,color:rust}}>${Number(order.delivery_fee).toFixed(2)}</div>
+                    <div style={{fontSize:11,color:muted}}>{timeAgo(order.created_at)}</div>
+                  </div>
+                </div>
+                {order.status === "pending" && (
+                  <button onClick={async()=>{
+                    try { await sb.updateOrder(order.id,{status:"ready_for_pickup"}); loadRecentOrders(); } catch(e){}
+                  }} style={{marginTop:10,background:"#FF6B1A",color:"white",border:"none",padding:"8px 16px",fontSize:12,borderRadius:4,cursor:"pointer",fontWeight:600,width:"100%"}}>
+                    🍔 Mark Order Ready for Pickup
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       </main>
     </div>
