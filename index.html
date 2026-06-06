@@ -226,6 +226,7 @@ function Dashboard({ navigate }) {
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("orders");
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
 
   const knownIds = useRef(new Set());
 
@@ -306,7 +307,15 @@ function Dashboard({ navigate }) {
           <span style={{fontSize:11,color:muted,marginLeft:8,textTransform:"uppercase",letterSpacing:".08em"}}>Dashboard</span>
         </div>
         <div style={{display:"flex",gap:8}}>
-          <button className="btn btn-outline" style={{padding:"6px 12px",fontSize:11}} onClick={()=>{unlockAudio();playChime();}}>🔔 Test</button>
+          {!audioUnlocked ? (
+            <button className="btn btn-red" style={{padding:"6px 12px",fontSize:11}} onClick={()=>{
+              unlockAudio();
+              playChime();
+              setAudioUnlocked(true);
+            }}>🔔 Enable Sound</button>
+          ) : (
+            <button className="btn btn-outline" style={{padding:"6px 12px",fontSize:11,borderColor:"#27AE60",color:"#27AE60"}} onClick={()=>{playChime();}}>🔔 ✓</button>
+          )}
           <button className="btn btn-outline" style={{padding:"6px 12px",fontSize:11}} onClick={loadOrders}>↻</button>
           <button className="btn btn-outline" style={{padding:"6px 12px",fontSize:11}} onClick={()=>{sessionStorage.removeItem("dm_authed");window.location.hash="";}}>Exit</button>
         </div>
