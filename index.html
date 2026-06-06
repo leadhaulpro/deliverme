@@ -685,30 +685,56 @@ function RestaurantPortal({ restaurant, slug }) {
                 )}
                 {order.status !== "cancelled" && order.status !== "delivered" && (
                   <div style={{marginTop:8}}>
-                    <p style={{fontSize:11,color:muted,marginBottom:6,textTransform:"uppercase",letterSpacing:".05em"}}>💝 Tip your driver</p>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    <p style={{fontSize:11,color:muted,marginBottom:8,textTransform:"uppercase",letterSpacing:".05em"}}>💝 Tip your driver</p>
+                    
+                    {/* Venmo row */}
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                      <span style={{fontSize:11,color:"#008CFF",fontWeight:700,width:55}}>Venmo</span>
                       {[1,2,3,5].map(t=>(
-                        <button key={"v"+t} onClick={()=>{
-                          window.open(`https://venmo.com/Delivermeapp?txn=pay&amount=${t}&note=${encodeURIComponent("Tip for DELIVERme driver")}`, "_blank");
-                        }} style={{padding:"6px 10px",border:"1px solid #008CFF",background:"white",color:"#008CFF",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>
-                          ${t} V
+                        <button key={t} onClick={()=>window.open(`https://venmo.com/Delivermeapp?txn=pay&amount=${t}&note=${encodeURIComponent("Tip for DELIVERme driver")}`, "_blank")}
+                          style={{flex:1,padding:"6px 4px",border:"1px solid #008CFF",background:"white",color:"#008CFF",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>
+                          ${t}
                         </button>
                       ))}
+                    </div>
+
+                    {/* CashApp row */}
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                      <span style={{fontSize:11,color:"#00AA28",fontWeight:700,width:55}}>CashApp</span>
                       {[1,2,3,5].map(t=>(
-                        <button key={"c"+t} onClick={()=>{
-                          window.open(`https://cash.app/$Delivermeapp/${t}`, "_blank");
-                        }} style={{padding:"6px 10px",border:"1px solid #00D632",background:"white",color:"#00AA28",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>
-                          ${t} CA
+                        <button key={t} onClick={()=>window.open(`https://cash.app/$Delivermeapp/${t}`, "_blank")}
+                          style={{flex:1,padding:"6px 4px",border:"1px solid #00D632",background:"white",color:"#00AA28",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>
+                          ${t}
                         </button>
                       ))}
+                    </div>
+
+                    {/* Card row */}
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                      <span style={{fontSize:11,color:"#635BFF",fontWeight:700,width:55}}>Card</span>
+                      {[1,2,3,5].map(t=>(
+                        <button key={t} onClick={()=>window.open(`https://buy.stripe.com/3cI5kC81Z4IDeEe4Vgd3i00`, "_blank")}
+                          style={{flex:1,padding:"6px 4px",border:"none",background:"#635BFF",color:"white",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>
+                          ${t}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Custom row */}
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontSize:11,color:muted,fontWeight:700,width:55}}>Custom</span>
+                      <input id={`tip-${order.id}`} placeholder="$" type="number" min="1"
+                        style={{flex:2,padding:"6px 8px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:12,background:"#F9F5EE",outline:"none"}}/>
                       <button onClick={()=>{
-                        const custom = prompt("Enter tip amount:");
-                        if(custom && parseFloat(custom) > 0) {
-                          window.open(`https://venmo.com/Delivermeapp?txn=pay&amount=${parseFloat(custom)}&note=${encodeURIComponent("Tip for DELIVERme driver")}`, "_blank");
-                        }
-                      }} style={{padding:"6px 10px",border:"1px solid #DDD5C8",background:"white",color:muted,borderRadius:4,cursor:"pointer",fontSize:11}}>
-                        Custom
-                      </button>
+                        const amt = document.getElementById(`tip-${order.id}`).value;
+                        if(amt && parseFloat(amt)>0) window.open(`https://venmo.com/Delivermeapp?txn=pay&amount=${parseFloat(amt)}&note=${encodeURIComponent("Tip for DELIVERme driver")}`, "_blank");
+                      }} style={{padding:"6px 8px",border:"1px solid #008CFF",background:"white",color:"#008CFF",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:700}}>V</button>
+                      <button onClick={()=>{
+                        const amt = document.getElementById(`tip-${order.id}`).value;
+                        if(amt && parseFloat(amt)>0) window.open(`https://cash.app/$Delivermeapp/${parseFloat(amt)}`, "_blank");
+                      }} style={{padding:"6px 8px",border:"1px solid #00D632",background:"white",color:"#00AA28",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:700}}>CA</button>
+                      <button onClick={()=>window.open(`https://buy.stripe.com/3cI5kC81Z4IDeEe4Vgd3i00`, "_blank")}
+                        style={{padding:"6px 8px",border:"none",background:"#635BFF",color:"white",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:700}}>💳</button>
                     </div>
                   </div>
                 )}
