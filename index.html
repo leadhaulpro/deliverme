@@ -226,14 +226,17 @@ function Dashboard({ navigate }) {
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("orders");
-  const prevPending = useRef(0);
+
+  const knownIds = useRef(new Set());
 
   const loadOrders = async () => {
     try {
       const data = await sb.getOrders();
-      const newPending = data.filter(o=>o.status==="pending"||o.status==="ready_for_pickup").length;
-      if (!loading && newPending > prevPending.current) playChime();
-      prevPending.current = newPending;
+      const newPendingOrders = data.filter(o => o.status === "pending" && !knownIds.current.has(o.id));
+      if (knownIds.current.size > 0 && newPendingOrders.length > 0) {
+        playChime();
+      }
+      data.forEach(o => knownIds.current.add(o.id));
       setOrders(data);
     } catch(e) {}
     finally { setLoading(false); }
