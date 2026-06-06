@@ -332,6 +332,7 @@ function Dashboard({ navigate }) {
                         {order.status}
                       </span>
                     </div>
+                    <div style={{fontSize:11,color:muted,marginBottom:6,letterSpacing:".05em"}}>Order #{order.id.slice(0,8).toUpperCase()}</div>
                     <div style={{fontSize:13,marginBottom:2}}><strong>{order.customer_name}</strong> · {order.customer_phone}</div>
                     <div style={{fontSize:13,color:muted,marginBottom:2}}>📍 {order.dropoff_address}</div>
                     {order.order_details && <div style={{fontSize:12,color:muted}}>🧾 {order.order_details}</div>}
