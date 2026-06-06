@@ -714,7 +714,7 @@ function TrackingPage({ navigate, initialOrderId }) {
   const payWithStripe = async () => {
     try {
       const shortId = tracked.id.slice(0,8).toUpperCase();
-      const res = await fetch(SUPABASE_URL+"/functions/v1/create-payment", {
+      const res = await fetch(SUPABASE_URL+"/functions/v1/stripe-checkout-session", {
         method: "POST",
         headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY, "Content-Type": "application/json" },
         body: JSON.stringify({ amount: total, orderId: shortId, customerName: tracked.customer_name })
