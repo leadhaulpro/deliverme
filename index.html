@@ -107,17 +107,21 @@ function unlockAudio() {
 function playChime() {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    [523,659,784].forEach((freq,i) => {
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const now = audioCtx.currentTime;
+    [[523,0],[659,0.18],[784,0.36]].forEach(([freq, delay]) => {
       const o = audioCtx.createOscillator();
       const g = audioCtx.createGain();
       o.connect(g); g.connect(audioCtx.destination);
-      o.frequency.value = freq; o.type = "sine";
-      g.gain.setValueAtTime(0.3, audioCtx.currentTime+i*0.15);
-      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+i*0.15+0.4);
-      o.start(audioCtx.currentTime+i*0.15);
-      o.stop(audioCtx.currentTime+i*0.15+0.4);
+      o.type = "sine";
+      o.frequency.setValueAtTime(freq, now + delay);
+      g.gain.setValueAtTime(0, now + delay);
+      g.gain.linearRampToValueAtTime(0.5, now + delay + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.4);
+      o.start(now + delay);
+      o.stop(now + delay + 0.5);
     });
-  } catch(e) {}
+  } catch(e) { console.log("Audio error:", e); }
 }
 
 // ── Styles ────────────────────────────────────────────────────
