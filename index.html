@@ -712,17 +712,8 @@ function TrackingPage({ navigate, initialOrderId }) {
   const total = DELIVERY_FEE + totalTip;
 
   const payWithStripe = async () => {
-    try {
-      const shortId = tracked.id.slice(0,8).toUpperCase();
-      const res = await fetch(SUPABASE_URL+"/functions/v1/create-stripe-checkout-session", {
-        method: "POST",
-        headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: total, orderId: shortId, customerName: tracked.customer_name })
-      });
-      const data = await res.json();
-      if (data.url) window.location.href = data.url;
-      else alert("Payment error. Please try another method.");
-    } catch(e) { alert("Payment error. Please try another method."); }
+    const note = encodeURIComponent(`Order #${tracked.id.slice(0,8).toUpperCase()} - ${tracked.customer_name}`);
+    window.open(`https://buy.stripe.com/3cI5kC81Z4IDeEe4Vgd3i00?prefilled_email=&client_reference_id=${tracked.id.slice(0,8)}&locale=auto`, "_blank");
   };
 
   const payVenmo = () => {
