@@ -352,6 +352,14 @@ function Dashboard({ navigate }) {
                       </>}
                       {order.status==="picked_up" && <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11}} onClick={()=>updateStatus(order.id,"delivered")}>Mark Delivered</button>}
                       {(order.status==="delivered"||order.status==="cancelled") && <span style={{fontSize:11,color:muted}}>Closed</span>}
+                      {order.status!=="cancelled" && order.status!=="delivered" && (
+                        <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11}} onClick={()=>{
+                          const trackUrl = window.location.origin + "/#track";
+                          const shortId = order.id.slice(0,8).toUpperCase();
+                          const msg = `Hi ${order.customer_name}! Your order from ${order.restaurant_name} is on its way 🚗\n\nTrack your delivery:\n${trackUrl}\n\nYour Order ID: ${shortId}\n\nPay $${Number(order.delivery_fee).toFixed(2)} + tip at delivery or via:\nVenmo: @Delivermeapp\nCashApp: $Delivermeapp`;
+                          window.open(`sms:${order.customer_phone}?body=${encodeURIComponent(msg)}`);
+                        }}>📲 Text Customer</button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -651,6 +659,9 @@ function RestaurantPortal({ restaurant, slug }) {
                       }} style={{padding:"6px 10px",border:"1px solid #DDD5C8",background:"white",color:muted,borderRadius:4,cursor:"pointer",fontSize:11}}>
                         Custom
                       </button>
+                    </div>
+                    <div style={{marginTop:8,padding:"10px 12px",background:"#F9F5EE",border:"1px solid #DDD5C8",borderRadius:4,fontSize:12,color:"#7A7065"}}>
+                      💵 <strong>Cash on Delivery</strong> — customer pays driver $8 at drop-off
                     </div>
                   </div>
                 )}
