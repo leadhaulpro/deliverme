@@ -707,6 +707,24 @@ function RestaurantPortal({ restaurant, slug }) {
                 )}
                 {order.status !== "cancelled" && order.status !== "delivered" && (
                   <div style={{marginTop:8}}>
+                    <p style={{fontSize:11,color:muted,marginBottom:6,textTransform:"uppercase",letterSpacing:".05em"}}>💳 Pay delivery fee</p>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                      <button onClick={()=>window.open(`https://buy.stripe.com/3cI5kC81Z4IDeEe4Vgd3i00?client_reference_id=${order.id.slice(0,8)}`, "_blank")}
+                        style={{padding:"6px 10px",border:"none",background:"#635BFF",color:"white",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>
+                        💳 Card/Apple Pay $8
+                      </button>
+                      <button onClick={()=>window.open(`https://venmo.com/Delivermeapp?txn=pay&amount=8&note=${encodeURIComponent("DELIVERme delivery fee")}`, "_blank")}
+                        style={{padding:"6px 10px",border:"none",background:"#008CFF",color:"white",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>
+                        Venmo $8
+                      </button>
+                      <button onClick={()=>window.open(`https://cash.app/$Delivermeapp/8`, "_blank")}
+                        style={{padding:"6px 10px",border:"none",background:"#00D632",color:"white",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>
+                        CashApp $8
+                      </button>
+                      <button style={{padding:"6px 10px",border:"1px solid #DDD5C8",background:"white",color:ink,borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>
+                        💵 Cash
+                      </button>
+                    </div>
                     <p style={{fontSize:11,color:muted,marginBottom:6,textTransform:"uppercase",letterSpacing:".05em"}}>💝 Tip your driver</p>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                       {[1,2,3,5].map(t=>(
