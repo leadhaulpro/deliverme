@@ -24,7 +24,8 @@ const DRIVER_PIN = "1234";
 function getRoute() {
   const hash = window.location.hash.replace("#","");
   if (hash.startsWith("restaurant/")) return { view: "restaurant", slug: hash.replace("restaurant/","") };
-  if (hash === "track") return { view: "track" };
+  if (hash.startsWith("track/")) return { view: "track", orderId: hash.replace("track/","") };
+  if (hash === "track") return { view: "track", orderId: "" };
   if (hash === "dashboard") return { view: "dashboard" };
   return { view: "home" };
 }
@@ -132,7 +133,7 @@ function App() {
   }
 
   // Track view — no auth needed
-  if (route.view === "track") return <TrackingPage navigate={navigate}/>;
+  if (route.view === "track") return <TrackingPage navigate={navigate} initialOrderId={route.orderId || ""}/>;
 
   // Home/landing page
   if (route.view === "home") return <LandingPage navigate={navigate}/>;
@@ -354,9 +355,9 @@ function Dashboard({ navigate }) {
                       {(order.status==="delivered"||order.status==="cancelled") && <span style={{fontSize:11,color:muted}}>Closed</span>}
                       {order.status!=="cancelled" && order.status!=="delivered" && (
                         <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11}} onClick={()=>{
-                          const trackUrl = window.location.origin + "/#track";
                           const shortId = order.id.slice(0,8).toUpperCase();
-                          const msg = `Hi ${order.customer_name}! Your order from ${order.restaurant_name} is on its way 🚗\n\nTrack your delivery:\n${trackUrl}\n\nYour Order ID: ${shortId}\n\nPay $${Number(order.delivery_fee).toFixed(2)} + tip at delivery or via:\nVenmo: @Delivermeapp\nCashApp: $Delivermeapp`;
+                          const trackUrl = window.location.origin + "/#track/" + shortId;
+                          const msg = `Hi ${order.customer_name}! Your order from ${order.restaurant_name} is on its way 🚗\n\nTrack your delivery here:\n${trackUrl}\n\nDelivery fee: $${Number(order.delivery_fee).toFixed(2)}\nPay via Venmo @Delivermeapp, CashApp $Delivermeapp, or cash at drop-off.`;
                           window.open(`sms:${order.customer_phone}?body=${encodeURIComponent(msg)}`);
                         }}>📲 Text Customer</button>
                       )}
@@ -675,8 +676,8 @@ function RestaurantPortal({ restaurant, slug }) {
 }
 
 // ── Tracking Page ─────────────────────────────────────────────
-function TrackingPage({ navigate }) {
-  const [orderId, setOrderId] = useState("");
+function TrackingPage({ navigate, initialOrderId }) {
+  const [orderId, setOrderId] = useState(initialOrderId || "");
   const [tracked, setTracked] = useState(null);
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -687,15 +688,26 @@ function TrackingPage({ navigate }) {
   const DELIVERY_FEE = 8;
   const tipOptions = [1, 2, 3, 5];
 
-  const track = async () => {
-    if (!orderId) return;
+  const track = async (id) => {
+    const searchId = id || orderId;
+    if (!searchId) return;
     setLoading(true); setNotFound(false); setTracked(null);
     try {
-      const found = await sb.getOrderById(orderId);
+      // Try full UUID first, then search by short ID
+      let found = await sb.getOrderById(searchId);
+      if (!found) {
+        // Search by short ID prefix
+        const all = await sb.getOrders();
+        found = all.find(o => o.id.slice(0,8).toUpperCase() === searchId.toUpperCase()) || null;
+      }
       found ? setTracked(found) : setNotFound(true);
     } catch { setNotFound(true); }
     finally { setLoading(false); }
   };
+
+  useEffect(() => {
+    if (initialOrderId) track(initialOrderId);
+  }, []);
 
   const totalTip = customTip ? parseFloat(customTip) || 0 : tip;
   const total = DELIVERY_FEE + totalTip;
@@ -734,7 +746,7 @@ function TrackingPage({ navigate }) {
           <div style={{display:"flex",gap:10}}>
             <input value={orderId} onChange={e=>setOrderId(e.target.value)} onKeyDown={e=>e.key==="Enter"&&track()} placeholder="Enter your order ID"
               style={{flex:1,padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
-            <button onClick={track} disabled={loading||!orderId}
+            <button onClick={()=>track()} disabled={loading||!orderId}
               style={{background:rust,color:"white",border:"none",padding:"10px 18px",borderRadius:4,cursor:"pointer",fontWeight:600,fontSize:13}}>
               {loading ? "..." : "Track"}
             </button>
