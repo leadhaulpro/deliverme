@@ -57,7 +57,13 @@ const sb = {
     if (!res.ok) throw new Error("Failed");
     return res.json();
   },
-  async getOrderById(id) {
+  async deleteOrder(id) {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/orders?id=eq."+id, {
+      method: "DELETE",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
+    });
+    if (!res.ok) throw new Error("Failed to delete");
+  },
     const res = await fetch(SUPABASE_URL+"/rest/v1/orders?id=eq."+id, {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
     });
@@ -401,7 +407,13 @@ function Dashboard({ navigate }) {
                       {order.status==="picked_up" && <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11}} onClick={()=>updateStatus(order.id,"delivered")}>Mark Delivered</button>}
                       {order.status==="delivered" && <button className="btn btn-outline" style={{padding:"7px 14px",fontSize:11,borderColor:"#27AE60",color:"#27AE60"}} onClick={()=>updateStatus(order.id,"paid")}>💰 Mark Paid</button>}
                       {order.status==="paid" && <span style={{fontSize:11,color:"#27AE60",fontWeight:700}}>💰 Paid ✓</span>}
-                      {order.status==="cancelled" && <span style={{fontSize:11,color:muted}}>Closed</span>}
+                      {(order.status==="paid"||order.status==="cancelled") && (
+                        <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11,borderColor:"#DC3545",color:"#DC3545"}} onClick={async()=>{
+                          if(confirm("Delete this order?")) {
+                            try { await sb.deleteOrder(order.id); setOrders(prev=>prev.filter(o=>o.id!==order.id)); } catch(e){ alert("Failed to delete."); }
+                          }
+                        }}>🗑 Delete</button>
+                      )}
                       {order.status!=="cancelled" && order.status!=="delivered" && (
                         <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11}} onClick={()=>{
                           const shortId = order.id.slice(0,8).toUpperCase();
@@ -676,7 +688,15 @@ function RestaurantPortal({ restaurant, slug }) {
                     <div style={{fontSize:11,color:muted}}>{timeAgo(order.created_at)}</div>
                   </div>
                 </div>
-                {(order.status === "pending" || order.status === "active") && (
+                {(order.status === "delivered" || order.status === "cancelled" || order.status === "paid") && (
+                  <button onClick={async()=>{
+                    if(confirm("Remove this order from your list?")) {
+                      try { await sb.deleteOrder(order.id); loadRecentOrders(); } catch(e){ alert("Failed to delete."); }
+                    }
+                  }} style={{marginTop:8,width:"100%",background:"none",color:"#DC3545",border:"1px solid #DC3545",padding:"6px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>
+                    🗑 Remove Order
+                  </button>
+                )}
                   <button onClick={async()=>{
                     try { await sb.updateOrder(order.id,{status:"ready_for_pickup"}); loadRecentOrders(); } catch(e){}
                   }} style={{marginTop:10,background:"#FF6B1A",color:"white",border:"none",padding:"8px 16px",fontSize:12,borderRadius:4,cursor:"pointer",fontWeight:600,width:"100%"}}>
