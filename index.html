@@ -64,6 +64,7 @@ const sb = {
     });
     if (!res.ok) throw new Error("Failed to delete");
   },
+  async getOrderById(id) {
     const res = await fetch(SUPABASE_URL+"/rest/v1/orders?id=eq."+id, {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
     });
@@ -697,6 +698,7 @@ function RestaurantPortal({ restaurant, slug }) {
                     🗑 Remove Order
                   </button>
                 )}
+                {(order.status === "pending" || order.status === "active") && (
                   <button onClick={async()=>{
                     try { await sb.updateOrder(order.id,{status:"ready_for_pickup"}); loadRecentOrders(); } catch(e){}
                   }} style={{marginTop:10,background:"#FF6B1A",color:"white",border:"none",padding:"8px 16px",fontSize:12,borderRadius:4,cursor:"pointer",fontWeight:600,width:"100%"}}>
