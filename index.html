@@ -530,6 +530,29 @@ function RestaurantPortal({ restaurant, slug }) {
             🍔 Order is Ready for Pickup!
           </button>
 
+          {/* Pay delivery fee section */}
+          <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20,marginBottom:16}}>
+            <h3 style={{fontSize:15,fontWeight:700,marginBottom:4}}>💳 Pay Delivery Fee</h3>
+            <p style={{fontSize:12,color:muted,marginBottom:14}}>$8.00 delivery fee — pay now or at drop-off</p>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              <button onClick={()=>window.open(`https://buy.stripe.com/3cI5kC81Z4IDeEe4Vgd3i00?client_reference_id=${orderId ? orderId.slice(0,8) : ""}`, "_blank")}
+                style={{background:"#635BFF",color:"white",border:"none",padding:"12px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:14}}>
+                💳 Pay by Card / Apple Pay — $8.00
+              </button>
+              <button onClick={()=>window.open(`https://venmo.com/Delivermeapp?txn=pay&amount=8&note=${encodeURIComponent("DELIVERme delivery fee")}`, "_blank")}
+                style={{background:"#008CFF",color:"white",border:"none",padding:"12px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:14}}>
+                Pay with Venmo — $8.00
+              </button>
+              <button onClick={()=>window.open(`https://cash.app/$Delivermeapp/8`, "_blank")}
+                style={{background:"#00D632",color:"white",border:"none",padding:"12px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:14}}>
+                Pay with CashApp — $8.00
+              </button>
+              <button style={{background:"white",color:ink,border:"2px solid "+ink,padding:"12px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:14}}>
+                💵 Pay Cash on Delivery
+              </button>
+            </div>
+          </div>
+
           {/* Tip section */}
           {!tipped ? (
             <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20,marginBottom:16}}>
