@@ -710,6 +710,20 @@ function TrackingPage({ navigate, initialOrderId }) {
   const totalTip = customTip ? parseFloat(customTip) || 0 : tip;
   const total = DELIVERY_FEE + totalTip;
 
+  const payWithStripe = async () => {
+    try {
+      const shortId = tracked.id.slice(0,8).toUpperCase();
+      const res = await fetch(SUPABASE_URL+"/functions/v1/create-payment", {
+        method: "POST",
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: total, orderId: shortId, customerName: tracked.customer_name })
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else alert("Payment error. Please try another method.");
+    } catch(e) { alert("Payment error. Please try another method."); }
+  };
+
   const payVenmo = () => {
     const note = encodeURIComponent("DELIVERme delivery fee");
     window.open(`https://venmo.com/Delivermeapp?txn=pay&amount=${total}&note=${note}`, "_blank");
@@ -809,6 +823,9 @@ function TrackingPage({ navigate, initialOrderId }) {
                 </div>
 
                 <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  <button onClick={payWithStripe} style={{background:"#635BFF",color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>
+                    💳 Pay by Card / Apple Pay — ${total.toFixed(2)}
+                  </button>
                   <button onClick={payVenmo} style={{background:"#008CFF",color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>
                     Pay with Venmo — ${total.toFixed(2)}
                   </button>
@@ -818,7 +835,7 @@ function TrackingPage({ navigate, initialOrderId }) {
                   <button onClick={()=>setPaid(true)} style={{background:"white",color:ink,border:"2px solid "+ink,padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>
                     💵 Pay Cash on Delivery
                   </button>
-                  <p style={{fontSize:11,color:muted,textAlign:"center"}}>Venmo & CashApp accept Apple Pay</p>
+                  <p style={{fontSize:11,color:muted,textAlign:"center"}}>Card payment accepts Apple Pay & Google Pay</p>
                 </div>
               </div>
             ) : (
