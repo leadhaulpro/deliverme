@@ -689,17 +689,15 @@ function TrackingPage({ navigate, initialOrderId }) {
   const tipOptions = [1, 2, 3, 5];
 
   const track = async (id) => {
-    const searchId = id || orderId;
+    const searchId = (id || orderId).trim();
     if (!searchId) return;
     setLoading(true); setNotFound(false); setTracked(null);
     try {
-      // Try full UUID first, then search by short ID
-      let found = await sb.getOrderById(searchId);
-      if (!found) {
-        // Search by short ID prefix
-        const all = await sb.getOrders();
-        found = all.find(o => o.id.slice(0,8).toUpperCase() === searchId.toUpperCase()) || null;
-      }
+      const all = await sb.getOrders();
+      const found = all.find(o => 
+        o.id === searchId || 
+        o.id.slice(0,8).toUpperCase() === searchId.toUpperCase()
+      ) || null;
       found ? setTracked(found) : setNotFound(true);
     } catch { setNotFound(true); }
     finally { setLoading(false); }
