@@ -579,20 +579,16 @@ function RestaurantPortal({ restaurant, slug }) {
               <p style={{fontSize:12,color:muted,marginBottom:12}}>Show your appreciation for great service!</p>
               <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
                 {[1,2,3,5].map(t=>(
-                  <button key={t} onClick={()=>{setTip(tip===t?0:t);setCustomTip("");}}
-                    style={{padding:"8px 14px",border:"1px solid "+(tip===t?"#C0392B":"#DDD5C8"),background:tip===t?"#C0392B":"white",color:tip===t?"white":ink,borderRadius:4,cursor:"pointer",fontSize:13,fontWeight:600}}>
+                  <button key={t} onClick={()=>{window.open(STRIPE_TIPS[t], "_blank");setTipped(true);}}
+                    style={{flex:1,padding:"8px 4px",border:"none",background:"#635BFF",color:"white",borderRadius:4,cursor:"pointer",fontSize:13,fontWeight:600}}>
                     ${t}
                   </button>
                 ))}
-                <input value={customTip} onChange={e=>{setCustomTip(e.target.value);setTip(0);}} placeholder="Custom"
-                  style={{width:80,padding:"8px 10px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:13,background:"#F9F5EE",outline:"none",textAlign:"center"}}/>
               </div>
-              {totalTip > 0 && (
-                <button onClick={()=>{window.open(STRIPE_TIPS[totalTip] || STRIPE_DELIVERY, "_blank");setTipped(true);}}
-                  style={{width:"100%",background:"#635BFF",color:"white",border:"none",padding:"12px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:14}}>
-                  💳 Tip ${totalTip.toFixed(2)} by Card
-                </button>
-              )}
+              <button onClick={()=>{window.open(STRIPE_TIPS[1], "_blank");setTipped(true);}}
+                style={{width:"100%",background:"white",color:"#635BFF",border:"1px solid #635BFF",padding:"10px",borderRadius:4,cursor:"pointer",fontSize:13,fontWeight:600}}>
+                💳 Custom amount — tap to enter quantity
+              </button>
             </div>
           ) : (
             <div style={{background:"#D4EDDA",border:"1px solid #C3E6CB",borderRadius:8,padding:16,textAlign:"center",marginBottom:16}}>
@@ -735,13 +731,9 @@ function RestaurantPortal({ restaurant, slug }) {
                       ))}
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <input id={`tip-${order.id}`} placeholder="Custom $" type="number" min="1"
-                        style={{flex:1,padding:"6px 8px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:12,background:"#F9F5EE",outline:"none"}}/>
-                      <button onClick={()=>{
-                        const amt = document.getElementById(`tip-${order.id}`).value;
-                        if(amt && parseFloat(amt)>0) tipWithMethod(parseFloat(amt));
-                      }} style={{padding:"6px 14px",background:"#635BFF",color:"white",border:"none",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:700}}>
-                        💳 Pay
+                      <button onClick={()=>window.open(STRIPE_DELIVERY, "_blank")}
+                        style={{width:"100%",padding:"7px",border:"1px solid #635BFF",background:"white",color:"#635BFF",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>
+                        💳 Custom amount — tap to enter
                       </button>
                     </div>
                   </div>
