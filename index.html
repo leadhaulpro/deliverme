@@ -809,6 +809,7 @@ function TrackingPage({ navigate, initialOrderId }) {
   const [tip, setTip] = useState(0);
   const [customTip, setCustomTip] = useState("");
   const [paid, setPaid] = useState(false);
+  const [cashSelected, setCashSelected] = useState(false);
 
   const DELIVERY_FEE = 8;
   const tipOptions = [1, 2, 3, 5];
@@ -835,22 +836,9 @@ function TrackingPage({ navigate, initialOrderId }) {
   const totalTip = customTip ? parseFloat(customTip) || 0 : tip;
   const total = DELIVERY_FEE + totalTip;
 
-  const payWithStripe = async () => {
-    const note = encodeURIComponent(`Order #${tracked.id.slice(0,8).toUpperCase()} - ${tracked.customer_name}`);
-    window.open(`https://buy.stripe.com/3cI5kC81Z4IDeEe4Vgd3i00?prefilled_email=&client_reference_id=${tracked.id.slice(0,8)}&locale=auto`, "_blank");
-  };
-
-  const payVenmo = () => {
-    const note = encodeURIComponent("DELIVERme delivery fee");
-    window.open(`https://venmo.com/Delivermeapp?txn=pay&amount=${total}&note=${note}`, "_blank");
-    setPaid(true);
-  };
-
-  const payCashApp = () => {
-    const note = encodeURIComponent("DELIVERme delivery fee");
-    window.open(`https://cash.app/$Delivermeapp/${total}`, "_blank");
-    setPaid(true);
-  };
+  const payWithStripe = () => window.open(`https://buy.stripe.com/3cI5kC81Z4IDeEe4Vgd3i00?client_reference_id=${tracked.id.slice(0,8)}&locale=auto`, "_blank");
+  const payVenmo = () => window.open(`https://venmo.com/Delivermeapp?txn=pay&amount=${total}&note=${encodeURIComponent("DELIVERme delivery fee")}`, "_blank");
+  const payCashApp = () => window.open(`https://cash.app/$Delivermeapp/${total}`, "_blank");
 
   const steps = ["Order Received","Driver Accepted","Picked Up","On The Way","Delivered"];
   const stepIndex = !tracked ? 0 : tracked.status==="pending" ? 1 : tracked.status==="active" || tracked.status==="ready_for_pickup" ? 2 : tracked.status==="picked_up" ? 4 : tracked.status==="delivered" ? 5 : 0;
@@ -948,16 +936,28 @@ function TrackingPage({ navigate, initialOrderId }) {
                   <button onClick={payCashApp} style={{background:"#00D632",color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>
                     Pay with CashApp — ${total.toFixed(2)}
                   </button>
-                  <button onClick={()=>setPaid(true)} style={{background:"white",color:ink,border:"2px solid "+ink,padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>
+                  <button onClick={()=>setCashSelected(true)} style={{background:"white",color:ink,border:"2px solid "+ink,padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>
                     💵 Pay Cash on Delivery
                   </button>
-                  <p style={{fontSize:11,color:muted,textAlign:"center"}}>Card payment accepts Apple Pay & Google Pay</p>
+                  {cashSelected && (
+                    <div style={{background:"#FFF3CD",border:"1px solid #FFC107",borderRadius:6,padding:12,textAlign:"center"}}>
+                      <p style={{fontWeight:700,color:"#856404"}}>💵 Cash selected</p>
+                      <p style={{fontSize:13,color:"#856404",marginTop:4}}>Please have <strong>${total.toFixed(2)}</strong> ready for the driver at drop-off.</p>
+                    </div>
+                  )}
+                  <div style={{borderTop:"1px solid #DDD5C8",paddingTop:10,marginTop:4}}>
+                    <p style={{fontSize:12,color:muted,textAlign:"center",marginBottom:8}}>After completing your payment tap below</p>
+                    <button onClick={()=>setPaid(true)} style={{width:"100%",background:"#27AE60",color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>
+                      ✓ I've Completed My Payment
+                    </button>
+                  </div>
+                  <p style={{fontSize:11,color:muted,textAlign:"center"}}>Card accepts Apple Pay & Google Pay</p>
                 </div>
               </div>
             ) : (
               <div style={{background:"#D4EDDA",border:"1px solid #C3E6CB",borderRadius:8,padding:20,textAlign:"center"}}>
                 <div style={{fontSize:36,marginBottom:8}}>🎉</div>
-                <p style={{fontWeight:700,color:"#155724",fontSize:16}}>Payment sent!</p>
+                <p style={{fontWeight:700,color:"#155724",fontSize:16}}>Payment confirmed!</p>
                 <p style={{color:"#155724",fontSize:13,marginTop:4}}>Thank you for using DELIVERme!</p>
               </div>
             )}
