@@ -57,6 +57,22 @@ const sb = {
     if (!res.ok) throw new Error("Failed");
     return res.json();
   },
+  async saveRating(restaurantName, restaurantSlug, orderId, tipped, tipAmount, rating) {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/restaurant_ratings", {
+      method: "POST",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY, "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({ restaurant_name:restaurantName, restaurant_slug:restaurantSlug, order_id:orderId, tipped, tip_amount:tipAmount, rating })
+    });
+    if (!res.ok) throw new Error("Failed to save rating");
+    return res.json();
+  },
+  async getRatings() {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/restaurant_ratings?order=created_at.desc", {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
+    });
+    if (!res.ok) throw new Error("Failed");
+    return res.json();
+  },
   async deleteOrder(id) {
     const res = await fetch(SUPABASE_URL+"/rest/v1/orders?id=eq."+id, {
       method: "DELETE",
@@ -238,6 +254,7 @@ function Dashboard({ navigate }) {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("orders");
   const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [ratingOrder, setRatingOrder] = useState(null);
 
   const knownIds = useRef(new Set());
 
@@ -344,6 +361,9 @@ function Dashboard({ navigate }) {
           <button onClick={()=>setTab("restaurants")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="restaurants"?ink:border),background:tab==="restaurants"?ink:"transparent",color:tab==="restaurants"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>
             🏪 Restaurants
           </button>
+          <button onClick={()=>setTab("ratings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="ratings"?ink:border),background:tab==="ratings"?ink:"transparent",color:tab==="ratings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>
+            ⭐ Ratings
+          </button>
         </div>
 
         {/* Restaurants Panel */}
@@ -431,7 +451,7 @@ function Dashboard({ navigate }) {
                         <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11,background:"#9B59B6"}} onClick={()=>updateStatus(order.id,"picked_up")}>Picked Up</button>
                       </>}
                       {order.status==="picked_up" && <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11}} onClick={()=>updateStatus(order.id,"delivered")}>Mark Delivered</button>}
-                      {order.status==="delivered" && <button className="btn btn-outline" style={{padding:"7px 14px",fontSize:11,borderColor:"#27AE60",color:"#27AE60"}} onClick={()=>updateStatus(order.id,"paid")}>💰 Mark Paid</button>}
+                      {order.status==="delivered" && <button className="btn btn-outline" style={{padding:"7px 14px",fontSize:11,borderColor:"#27AE60",color:"#27AE60"}} onClick={()=>{updateStatus(order.id,"paid"); setRatingOrder(order);}}>💰 Mark Paid</button>}
                       {order.status==="paid" && <span style={{fontSize:11,color:"#27AE60",fontWeight:700}}>💰 Paid ✓</span>}
                       {(order.status==="paid"||order.status==="cancelled") && (
                         <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11,borderColor:"#DC3545",color:"#DC3545"}} onClick={async()=>{
@@ -456,7 +476,112 @@ function Dashboard({ navigate }) {
           })}
         </div>
         </>}
+
+        {tab==="ratings" && <RatingsPanel/>}
+
       </main>
+
+      {/* Rating Modal */}
+      {ratingOrder && (
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{background:"white",borderRadius:12,padding:24,maxWidth:380,width:"100%"}}>
+            <h3 style={{fontSize:17,fontWeight:900,marginBottom:4}}>Rate {ratingOrder.restaurant_name}</h3>
+            <p style={{fontSize:13,color:muted,marginBottom:20}}>How was their tipping behavior on this order?</p>
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+              {[
+                {stars:5, label:"⭐⭐⭐⭐⭐ Excellent tipper"},
+                {stars:4, label:"⭐⭐⭐⭐ Good tipper"},
+                {stars:3, label:"⭐⭐⭐ Average"},
+                {stars:2, label:"⭐⭐ Rarely tips"},
+                {stars:1, label:"⭐ Never tips"},
+              ].map(r=>(
+                <button key={r.stars} onClick={async()=>{
+                  try {
+                    await sb.saveRating(ratingOrder.restaurant_name, ratingOrder.restaurant_slug, ratingOrder.id, r.stars>=3, 0, r.stars);
+                    setRatingOrder(null);
+                  } catch(e){ alert("Could not save rating."); }
+                }} style={{padding:"12px 16px",border:"1px solid #DDD5C8",borderRadius:6,background:"white",cursor:"pointer",fontSize:14,textAlign:"left",fontWeight:500}}>
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <button onClick={()=>setRatingOrder(null)} style={{width:"100%",background:"none",color:muted,border:"none",padding:"10px",cursor:"pointer",fontSize:13}}>
+              Skip for now
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Ratings Panel ─────────────────────────────────────────────
+function RatingsPanel() {
+  const [ratings, setRatings] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(()=>{
+    sb.getRatings().then(data=>{
+      setRatings(data);
+      setLoading(false);
+    }).catch(()=>setLoading(false));
+  },[]);
+
+  // Calculate average rating per restaurant
+  const byRestaurant = {};
+  ratings.forEach(r => {
+    if (!byRestaurant[r.restaurant_name]) byRestaurant[r.restaurant_name] = [];
+    byRestaurant[r.restaurant_name].push(r.rating);
+  });
+
+  const restaurantStats = Object.entries(byRestaurant).map(([name, ratingsList]) => {
+    const avg = ratingsList.reduce((a,b)=>a+b,0) / ratingsList.length;
+    return { name, avg, count: ratingsList.length };
+  }).sort((a,b)=>b.avg-a.avg);
+
+  const stars = (avg) => {
+    const full = Math.round(avg);
+    return "⭐".repeat(full) + (full < 5 ? "☆".repeat(5-full) : "");
+  };
+
+  const label = (avg) => {
+    if(avg>=4.5) return {text:"Excellent tipper", color:"#27AE60"};
+    if(avg>=3.5) return {text:"Good tipper", color:"#2980B9"};
+    if(avg>=2.5) return {text:"Average", color:"#F39C12"};
+    if(avg>=1.5) return {text:"Rarely tips", color:"#E67E22"};
+    return {text:"Never tips", color:"#DC3545"};
+  };
+
+  return (
+    <div className="fade-in">
+      <div style={{marginBottom:16}}>
+        <h2 style={{fontSize:20,fontWeight:900}}>⭐ Restaurant Ratings</h2>
+        <p style={{fontSize:13,color:"#7A7065",marginTop:4}}>Private — only you can see this</p>
+      </div>
+      {loading && <div style={{textAlign:"center",padding:"40px 0",color:"#7A7065"}}>Loading...</div>}
+      {!loading && restaurantStats.length===0 && (
+        <div style={{textAlign:"center",padding:"40px 0",color:"#7A7065",fontSize:13}}>No ratings yet. Rate restaurants after marking orders paid.</div>
+      )}
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {restaurantStats.map(r=>{
+          const l = label(r.avg);
+          return (
+            <div key={r.name} className="card">
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>{r.name}</div>
+                  <div style={{fontSize:16}}>{stars(r.avg)}</div>
+                  <div style={{fontSize:12,marginTop:4,color:l.color,fontWeight:600}}>{l.text}</div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:24,fontWeight:900,color:l.color}}>{r.avg.toFixed(1)}</div>
+                  <div style={{fontSize:11,color:"#7A7065"}}>{r.count} order{r.count!==1?"s":""}</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -719,7 +844,7 @@ function RestaurantPortal({ restaurant, slug }) {
                     🍔 Order is Ready for Pickup
                   </button>
                 )}
-                {order.status !== "cancelled" && order.status !== "delivered" && order.status !== "paid" && (
+                {order.status !== "cancelled" && (
                   <div style={{marginTop:8}}>
                     <p style={{fontSize:11,color:muted,marginBottom:8,textTransform:"uppercase",letterSpacing:".05em"}}>💝 Tip your driver</p>
                     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
