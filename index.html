@@ -98,7 +98,14 @@ const RESTAURANTS = {
   "homegrown-cafe": { name: "Homegrown Cafe", address: "5 Railroad St, Canaan, CT 06018", defaultFee: "8.00" }
 };
 
-// ── Chime ─────────────────────────────────────────────────────
+// ── Stripe Payment Links ──────────────────────────────────────
+const STRIPE_DELIVERY = "https://buy.stripe.com/28E3cu4PNcb5bs287sd3i01";
+const STRIPE_TIPS = {
+  1: "https://buy.stripe.com/28E3cu4PNcb5bs287sd3i01",
+  2: "https://buy.stripe.com/3cIfZg2HFa2X3ZAcnId3i02",
+  3: "https://buy.stripe.com/4gMeVc5TR3Ez0NocnId3i03",
+  5: "https://buy.stripe.com/7sY5kCaa7ejdfIiafAd3i04"
+};
 let audioCtx = null;
 function unlockAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -478,7 +485,8 @@ function RestaurantPortal({ restaurant, slug }) {
   };
 
   const tipWithMethod = (amount) => {
-    window.open(`https://buy.stripe.com/3cI5kC81Z4IDeEe4Vgd3i00`, "_blank");
+    const link = STRIPE_TIPS[amount] || STRIPE_TIPS[1];
+    window.open(link, "_blank");
   };
 
   const restaurantName = form.restaurantName || restaurant.name;
@@ -580,7 +588,7 @@ function RestaurantPortal({ restaurant, slug }) {
                   style={{width:80,padding:"8px 10px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:13,background:"#F9F5EE",outline:"none",textAlign:"center"}}/>
               </div>
               {totalTip > 0 && (
-                <button onClick={()=>{window.open(`https://buy.stripe.com/3cI5kC81Z4IDeEe4Vgd3i00`, "_blank");setTipped(true);}}
+                <button onClick={()=>{window.open(STRIPE_TIPS[totalTip] || STRIPE_DELIVERY, "_blank");setTipped(true);}}
                   style={{width:"100%",background:"#635BFF",color:"white",border:"none",padding:"12px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:14}}>
                   💳 Tip ${totalTip.toFixed(2)} by Card
                 </button>
@@ -696,7 +704,6 @@ function RestaurantPortal({ restaurant, slug }) {
                     {order.order_details && <div style={{fontSize:12,color:muted}}>🧾 {order.order_details}</div>}
                   </div>
                   <div style={{textAlign:"right"}}>
-                    <div style={{fontWeight:700,color:rust}}>${Number(order.delivery_fee).toFixed(2)}</div>
                     <div style={{fontSize:11,color:muted}}>{timeAgo(order.created_at)}</div>
                   </div>
                 </div>
