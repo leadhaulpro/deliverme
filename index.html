@@ -651,11 +651,21 @@ function QRPanel() {
               <div style={{flex:1}}>
                 <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{qr.label}</div>
                 <div style={{fontSize:12,color:muted,marginBottom:8}}>{qr.desc}</div>
-                <div style={{fontSize:10,color:rust,wordBreak:"break-all",marginBottom:8}}>{qr.url}</div>
-                <button onClick={()=>{navigator.clipboard.writeText(qr.url).then(()=>alert("Link copied!")).catch(()=>alert(qr.url));}}
-                  style={{background:ink,color:"white",border:"none",padding:"6px 14px",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>
-                  Copy Link
-                </button>
+                <div style={{fontSize:10,color:rust,wordBreak:"break-all",marginBottom:8}}>
+                  <a href={qr.url} target="_blank" style={{color:rust,textDecoration:"underline"}}>{qr.url}</a>
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>{navigator.clipboard.writeText(qr.url).then(()=>alert("Link copied!")).catch(()=>alert(qr.url));}}
+                    style={{background:ink,color:"white",border:"none",padding:"6px 14px",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>
+                    Copy
+                  </button>
+                  <button onClick={()=>{
+                    if(navigator.share) navigator.share({title:"DELIVERme — "+qr.label, url:qr.url});
+                    else navigator.clipboard.writeText(qr.url).then(()=>alert("Link copied!"));
+                  }} style={{background:rust,color:"white",border:"none",padding:"6px 14px",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>
+                    Share
+                  </button>
+                </div>
               </div>
             </div>
           </div>
