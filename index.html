@@ -27,6 +27,7 @@ function getRoute() {
   if (hash.startsWith("track/")) return { view: "track", orderId: hash.replace("track/","") };
   if (hash === "track") return { view: "track", orderId: "" };
   if (hash === "dashboard") return { view: "dashboard" };
+  if (hash === "request") return { view: "request" };
   return { view: "home" };
 }
 
@@ -170,6 +171,9 @@ function App() {
     return <RestaurantPortal restaurant={restaurant} slug={route.slug}/>;
   }
 
+  // Customer request — no auth needed
+  if (route.view === "request") return <CustomerRequest navigate={navigate}/>;
+
   // Track view — no auth needed
   if (route.view === "track") return <TrackingPage navigate={navigate} initialOrderId={route.orderId || ""}/>;
 
@@ -197,6 +201,9 @@ function LandingPage({ navigate }) {
           <p style={{color:muted,fontSize:14,marginTop:8,letterSpacing:".05em"}}>LOCAL DELIVERY · LITCHFIELD COUNTY, CT</p>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <button onClick={()=>navigate("request")} style={{background:rust,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>
+            🛵 Request a Delivery
+          </button>
           <button onClick={()=>navigate("track")} style={{background:ink,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:600}}>
             📍 Track My Order
           </button>
@@ -364,6 +371,12 @@ function Dashboard({ navigate }) {
           <button onClick={()=>setTab("ratings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="ratings"?ink:border),background:tab==="ratings"?ink:"transparent",color:tab==="ratings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>
             ⭐ Ratings
           </button>
+          <button onClick={()=>setTab("qr")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="qr"?ink:border),background:tab==="qr"?ink:"transparent",color:tab==="qr"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>
+            📲 QR Code
+          </button>
+          <button onClick={()=>setTab("earnings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="earnings"?ink:border),background:tab==="earnings"?ink:"transparent",color:tab==="earnings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>
+            💵 Earnings
+          </button>
         </div>
 
         {/* Restaurants Panel */}
@@ -478,6 +491,8 @@ function Dashboard({ navigate }) {
         </>}
 
         {tab==="ratings" && <RatingsPanel/>}
+        {tab==="qr" && <QRPanel/>}
+        {tab==="earnings" && <EarningsPanel/>}
 
       </main>
 
@@ -511,6 +526,141 @@ function Dashboard({ navigate }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Earnings Panel ────────────────────────────────────────────
+function EarningsPanel() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState("week");
+
+  useEffect(()=>{
+    sb.getOrders().then(data=>{
+      setOrders(data.filter(o=>o.status==="paid"));
+      setLoading(false);
+    }).catch(()=>setLoading(false));
+  },[]);
+
+  const now = new Date();
+  const startOf = (p) => {
+    const d = new Date(now);
+    if(p==="today") { d.setHours(0,0,0,0); return d; }
+    if(p==="week") { d.setDate(d.getDate()-d.getDay()); d.setHours(0,0,0,0); return d; }
+    if(p==="month") { d.setDate(1); d.setHours(0,0,0,0); return d; }
+    return new Date(0);
+  };
+
+  const filtered = orders.filter(o => new Date(o.created_at) >= startOf(period));
+  const total = filtered.reduce((sum, o) => sum + Number(o.delivery_fee || 8), 0);
+  const count = filtered.length;
+  const avg = count > 0 ? total / count : 0;
+
+  // Group by day for the current period
+  const byDay = {};
+  filtered.forEach(o => {
+    const day = new Date(o.created_at).toLocaleDateString("en-US", {weekday:"short", month:"short", day:"numeric"});
+    if (!byDay[day]) byDay[day] = { count: 0, total: 0 };
+    byDay[day].count++;
+    byDay[day].total += Number(o.delivery_fee || 8);
+  });
+
+  const days = Object.entries(byDay).reverse();
+
+  return (
+    <div className="fade-in">
+      <div style={{marginBottom:16}}>
+        <h2 style={{fontSize:20,fontWeight:900}}>💵 Earnings</h2>
+        <p style={{fontSize:13,color:muted,marginTop:4}}>Based on paid orders</p>
+      </div>
+
+      {/* Period selector */}
+      <div style={{display:"flex",gap:6,marginBottom:16}}>
+        {[{val:"today",label:"Today"},{val:"week",label:"This Week"},{val:"month",label:"This Month"},{val:"all",label:"All Time"}].map(p=>(
+          <button key={p.val} onClick={()=>setPeriod(p.val)}
+            style={{flex:1,padding:"8px 4px",border:"1px solid "+(period===p.val?ink:border),background:period===p.val?ink:"white",color:period===p.val?"white":muted,borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Summary cards */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+        {[
+          {label:"Total Earned", val:"$"+total.toFixed(2), color:green},
+          {label:"Deliveries", val:count, color:rust},
+          {label:"Avg per Run", val:"$"+avg.toFixed(2), color:"#2980B9"}
+        ].map(s=>(
+          <div key={s.label} style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:"14px 10px",textAlign:"center"}}>
+            <div style={{fontSize:20,fontWeight:900,color:s.color}}>{s.val}</div>
+            <div style={{fontSize:10,color:muted,marginTop:4,textTransform:"uppercase",letterSpacing:".05em"}}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Daily breakdown */}
+      {loading && <div style={{textAlign:"center",padding:"20px",color:muted}}>Loading...</div>}
+      {!loading && days.length === 0 && (
+        <div style={{textAlign:"center",padding:"30px",color:muted,fontSize:13}}>No paid orders in this period yet.</div>
+      )}
+      {days.length > 0 && (
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          <p style={{fontSize:11,color:muted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:4}}>Daily Breakdown</p>
+          {days.map(([day, data])=>(
+            <div key={day} style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontWeight:600,fontSize:14}}>{day}</div>
+                <div style={{fontSize:12,color:muted}}>{data.count} delivery{data.count!==1?"s":""}</div>
+              </div>
+              <div style={{fontWeight:900,fontSize:18,color:green}}>${data.total.toFixed(2)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── QR Code Panel ─────────────────────────────────────────────
+function QRPanel() {
+  const baseUrl = "https://deliverme-app.com";
+  const qrCodes = [
+    { label: "Customer Request", url: baseUrl+"/#request", desc: "Customers scan to request a delivery" },
+    { label: "Track Order", url: baseUrl+"/#track", desc: "Customers scan to track their order" },
+  ];
+
+  // Add restaurant QR codes
+  Object.entries(RESTAURANTS).filter(([slug])=>slug!=="general").forEach(([slug, r]) => {
+    qrCodes.push({ label: r.name, url: baseUrl+"/#restaurant/"+slug, desc: "Restaurant portal link" });
+  });
+
+  const qrUrl = (url) => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+
+  return (
+    <div className="fade-in">
+      <div style={{marginBottom:16}}>
+        <h2 style={{fontSize:20,fontWeight:900}}>📲 QR Codes</h2>
+        <p style={{fontSize:13,color:muted,marginTop:4}}>Print or display these for customers and restaurants</p>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {qrCodes.map(qr=>(
+          <div key={qr.label} className="card">
+            <div style={{display:"flex",gap:16,alignItems:"center"}}>
+              <img src={qrUrl(qr.url)} alt={qr.label} style={{width:80,height:80,borderRadius:4,flexShrink:0}}/>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{qr.label}</div>
+                <div style={{fontSize:12,color:muted,marginBottom:8}}>{qr.desc}</div>
+                <div style={{fontSize:10,color:rust,wordBreak:"break-all",marginBottom:8}}>{qr.url}</div>
+                <button onClick={()=>{navigator.clipboard.writeText(qr.url).then(()=>alert("Link copied!")).catch(()=>alert(qr.url));}}
+                  style={{background:ink,color:"white",border:"none",padding:"6px 14px",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>
+                  Copy Link
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -866,6 +1016,156 @@ function RestaurantPortal({ restaurant, slug }) {
               </div>
             );
           })}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ── Customer Request Portal ───────────────────────────────────
+function CustomerRequest({ navigate }) {
+  const [form, setForm] = useState({
+    customerName: "", customerPhone: "", pickupName: "", pickupAddress: "",
+    dropoffAddress: "", orderDetails: "", notes: ""
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [orderId, setOrderId] = useState(null);
+
+  const handleChange = e => setForm(prev => ({...prev, [e.target.name]: e.target.value}));
+
+  const submit = async () => {
+    if (!form.customerName || !form.customerPhone || !form.pickupAddress || !form.dropoffAddress) return;
+    setLoading(true);
+    try {
+      const order = {
+        restaurant_name: form.pickupName || "Customer Request",
+        restaurant_address: form.pickupAddress,
+        customer_name: form.customerName,
+        customer_phone: form.customerPhone,
+        dropoff_address: form.dropoffAddress,
+        order_details: form.orderDetails,
+        notes: form.notes,
+        delivery_fee: 8.00,
+        status: "pending",
+        created_at: new Date().toISOString()
+      };
+      const [created] = await sb.createOrder(order);
+      setOrderId(created.id);
+      setSubmitted(true);
+    } catch(e) { alert("Error submitting. Please try again."); }
+    finally { setLoading(false); }
+  };
+
+  if (submitted) return (
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{textAlign:"center",maxWidth:400}}>
+        <div style={{fontSize:56,marginBottom:12}}>✓</div>
+        <h2 style={{fontSize:24,fontWeight:900,color:ink,marginBottom:8}}>Request Sent!</h2>
+        <p style={{color:muted,fontSize:14,marginBottom:4}}>Your driver has been notified and will confirm shortly.</p>
+        {orderId && (
+          <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:16,marginTop:16,marginBottom:24}}>
+            <p style={{fontSize:12,color:muted,marginBottom:4}}>Your Order ID</p>
+            <p style={{fontSize:20,fontWeight:900,color:rust}}>{orderId.slice(0,8).toUpperCase()}</p>
+            <p style={{fontSize:12,color:muted,marginTop:4}}>Save this to track your delivery</p>
+          </div>
+        )}
+        <button onClick={()=>navigate("track/"+orderId.slice(0,8).toUpperCase())} style={{width:"100%",background:ink,color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15,marginBottom:10}}>
+          📍 Track My Order
+        </button>
+        <button onClick={()=>{setSubmitted(false);setForm({customerName:"",customerPhone:"",pickupName:"",pickupAddress:"",dropoffAddress:"",orderDetails:"",notes:""});}} style={{width:"100%",background:"none",color:muted,border:"1px solid #DDD5C8",padding:"12px",borderRadius:6,cursor:"pointer",fontSize:13}}>
+          New Request
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",color:ink}}>
+      <style>{`*{box-sizing:border-box;margin:0;padding:0} input,textarea{font-family:inherit}`}</style>
+      <header style={{background:"white",borderBottom:"1px solid #DDD5C8",padding:"14px 20px"}}>
+        <div style={{maxWidth:520,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div>
+            <span style={{fontWeight:900,color:rust,fontSize:18}}>DELIVER</span>
+            <span style={{fontWeight:700,color:ink,fontSize:18}}>me</span>
+          </div>
+          <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>← Home</button>
+        </div>
+      </header>
+      <main style={{maxWidth:520,margin:"0 auto",padding:"24px 16px"}}>
+        <div style={{marginBottom:24}}>
+          <h1 style={{fontSize:26,fontWeight:900}}>Request a Delivery</h1>
+          <p style={{color:muted,fontSize:13,marginTop:6}}>Already ordered? We'll pick it up and bring it to you. $8 flat delivery fee.</p>
+        </div>
+
+        <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20,display:"flex",flexDirection:"column",gap:16}}>
+          
+          <div style={{borderBottom:"1px solid #DDD5C8",paddingBottom:16}}>
+            <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>Your Info</p>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div>
+                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Your Name *</label>
+                <input name="customerName" value={form.customerName} onChange={handleChange} placeholder="Jane Smith"
+                  style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Your Phone *</label>
+                <input name="customerPhone" value={form.customerPhone} onChange={handleChange} placeholder="(860) 555-0000" type="tel"
+                  style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+              </div>
+            </div>
+          </div>
+
+          <div style={{borderBottom:"1px solid #DDD5C8",paddingBottom:16}}>
+            <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>Pickup Location</p>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div>
+                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Place Name</label>
+                <input name="pickupName" value={form.pickupName} onChange={handleChange} placeholder="McDonald's, CVS, Stateline Pizza..."
+                  style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Pickup Address *</label>
+                <input name="pickupAddress" value={form.pickupAddress} onChange={handleChange} placeholder="123 Main St, Canaan, CT"
+                  style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>Delivery Details</p>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div>
+                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Drop-off Address *</label>
+                <input name="dropoffAddress" value={form.dropoffAddress} onChange={handleChange} placeholder="Your home address"
+                  style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>What did you order?</label>
+                <textarea name="orderDetails" value={form.orderDetails} onChange={handleChange} placeholder="Big Mac combo, large fries..." rows={3}
+                  style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Notes</label>
+                <input name="notes" value={form.notes} onChange={handleChange} placeholder="Leave at door, call on arrival..."
+                  style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+              </div>
+            </div>
+          </div>
+
+          <div style={{borderTop:"1px solid #DDD5C8",paddingTop:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div>
+                <p style={{fontWeight:700,fontSize:15}}>Delivery Fee</p>
+                <p style={{fontSize:12,color:muted}}>Pay at drop-off or by card</p>
+              </div>
+              <p style={{fontSize:22,fontWeight:900,color:rust}}>$8.00</p>
+            </div>
+            <button onClick={submit} disabled={loading||!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress}
+              style={{width:"100%",background:(!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>
+              {loading ? "Sending..." : "Request Delivery 🚗"}
+            </button>
+          </div>
         </div>
       </main>
     </div>
