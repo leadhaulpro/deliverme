@@ -415,8 +415,6 @@ function Dashboard({ navigate }) {
           ) : (
             <button className="btn btn-outline" style={{padding:"6px 12px",fontSize:11,borderColor:"#27AE60",color:"#27AE60"}} onClick={()=>{playChime();}}>🔔 ✓</button>
           )}
-          <button style={{padding:"6px 12px",fontSize:11,border:"none",background:"#00D632",color:"white",borderRadius:4,cursor:"pointer",fontWeight:700}} onClick={()=>window.open("https://cash.app/$Delivermeapp","_blank")}>CA$H</button>
-          <button style={{padding:"6px 12px",fontSize:11,border:"none",background:"#008CFF",color:"white",borderRadius:4,cursor:"pointer",fontWeight:700}} onClick={()=>window.open("https://venmo.com/Delivermeapp","_blank")}>Venmo</button>
           <button className="btn btn-outline" style={{padding:"6px 12px",fontSize:11}} onClick={loadOrders}>↻</button>
           <button className="btn btn-outline" style={{padding:"6px 12px",fontSize:11}} onClick={()=>{sessionStorage.removeItem("dm_authed");window.location.hash="";}}>Exit</button>
         </div>
@@ -455,6 +453,10 @@ function Dashboard({ navigate }) {
         )}
 
         {tab==="orders" && <>
+        <div style={{display:"flex",gap:8,marginBottom:14}}>
+          <button style={{flex:1,padding:"10px",fontSize:13,border:"none",background:"#00D632",color:"white",borderRadius:6,cursor:"pointer",fontWeight:700}} onClick={()=>window.open("https://cash.app/$Delivermeapp","_blank")}>CA$H App</button>
+          <button style={{flex:1,padding:"10px",fontSize:13,border:"none",background:"#008CFF",color:"white",borderRadius:6,cursor:"pointer",fontWeight:700}} onClick={()=>window.open("https://venmo.com/Delivermeapp","_blank")}>Venmo</button>
+        </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
           {[{label:"Pending",val:pending,color:"#F39C12"},{label:"Active",val:active,color:"#2980B9"},{label:"Delivered",val:delivered,color:green}].map(s=>(
             <div key={s.label} className="card" style={{textAlign:"center"}}>
