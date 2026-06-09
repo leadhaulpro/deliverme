@@ -20,7 +20,6 @@ const SUPABASE_URL = "https://lbvbvxbrebornbluvywj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxidmJ2eGJyZWJvcm5ibHV2eXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTQ3NjYsImV4cCI6MjA5NjA5MDc2Nn0.RqJyPJQyK7Uwvq3WmO6VXyx1Vk2dHEzooYkdaFhkxJQ";
 const DRIVER_PIN = "1234";
 
-// ── URL routing ──────────────────────────────────────────────
 function getRoute() {
   const hash = window.location.hash.replace("#","");
   if (hash.startsWith("restaurant/")) return { view: "restaurant", slug: hash.replace("restaurant/","") };
@@ -28,10 +27,10 @@ function getRoute() {
   if (hash === "track") return { view: "track", orderId: "" };
   if (hash === "dashboard") return { view: "dashboard" };
   if (hash === "request") return { view: "request" };
+  if (hash === "drive") return { view: "drive" };
   return { view: "home" };
 }
 
-// ── Supabase ─────────────────────────────────────────────────
 const sb = {
   async getOrders() {
     const res = await fetch(SUPABASE_URL+"/rest/v1/orders?order=created_at.desc", {
@@ -74,6 +73,31 @@ const sb = {
     if (!res.ok) throw new Error("Failed");
     return res.json();
   },
+  async createDriver(driver) {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/drivers", {
+      method: "POST",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY, "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify(driver)
+    });
+    if (!res.ok) throw new Error("Failed");
+    return res.json();
+  },
+  async getAvailability() {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/app_settings?id=eq.1", {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
+    });
+    if (!res.ok) return true;
+    const data = await res.json();
+    return data[0] ? data[0].driver_available : true;
+  },
+  async setAvailability(available) {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/app_settings?id=eq.1", {
+      method: "PATCH",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ driver_available: available, updated_at: new Date().toISOString() })
+    });
+    if (!res.ok) throw new Error("Failed");
+  },
   async deleteOrder(id) {
     const res = await fetch(SUPABASE_URL+"/rest/v1/orders?id=eq."+id, {
       method: "DELETE",
@@ -101,8 +125,6 @@ async function sendSMS(to, message) {
   } catch(e) {}
 }
 
-// ── Restaurants registry ──────────────────────────────────────
-// "general" is a universal portal link for any restaurant
 const RESTAURANTS = {
   "general": { name: "", address: "", defaultFee: "8.00" },
   "stateline-pizza": { name: "Stateline Pizza", address: "340 N Elm St, Canaan, CT 06018", defaultFee: "8.00" },
@@ -115,7 +137,6 @@ const RESTAURANTS = {
   "homegrown-cafe": { name: "Homegrown Cafe", address: "5 Railroad St, Canaan, CT 06018", defaultFee: "8.00" }
 };
 
-// ── Stripe Payment Links ──────────────────────────────────────
 const STRIPE_DELIVERY = "https://buy.stripe.com/28E3cu4PNcb5bs287sd3i01";
 const STRIPE_TIPS = {
   1: "https://buy.stripe.com/28E3cu4PNcb5bs287sd3i01",
@@ -148,48 +169,33 @@ function playChime() {
   } catch(e) { console.log("Audio error:", e); }
 }
 
-// ── Styles ────────────────────────────────────────────────────
 const cream="#F9F5EE", ink="#1A1612", rust="#C0392B", muted="#7A7065", border="#DDD5C8", green="#27AE60";
 
-// ── App Root ──────────────────────────────────────────────────
 function App() {
   const [route, setRoute] = useState(getRoute());
   const [authed, setAuthed] = useState(!!sessionStorage.getItem("dm_authed"));
-
   useEffect(() => {
     const handler = () => setRoute(getRoute());
     window.addEventListener("hashchange", handler);
     return () => window.removeEventListener("hashchange", handler);
   }, []);
-
   const navigate = (hash) => { window.location.hash = hash; };
-
-  // Restaurant view — no auth needed
   if (route.view === "restaurant") {
     const restaurant = RESTAURANTS[route.slug];
     if (!restaurant) return <NotFound/>;
     return <RestaurantPortal restaurant={restaurant} slug={route.slug}/>;
   }
-
-  // Customer request — no auth needed
   if (route.view === "request") return <CustomerRequest navigate={navigate}/>;
-
-  // Track view — no auth needed
+  if (route.view === "drive") return <DriverSignup navigate={navigate}/>;
   if (route.view === "track") return <TrackingPage navigate={navigate} initialOrderId={route.orderId || ""}/>;
-
-  // Home/landing page
   if (route.view === "home") return <LandingPage navigate={navigate}/>;
-
-  // Dashboard — requires PIN
   if (route.view === "dashboard") {
     if (!authed) return <PinEntry onSuccess={() => { sessionStorage.setItem("dm_authed","1"); setAuthed(true); }}/>;
     return <Dashboard navigate={navigate}/>;
   }
-
   return <LandingPage navigate={navigate}/>;
 }
 
-// ── Landing Page ──────────────────────────────────────────────
 function LandingPage({ navigate }) {
   return (
     <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
@@ -201,15 +207,10 @@ function LandingPage({ navigate }) {
           <p style={{color:muted,fontSize:14,marginTop:8,letterSpacing:".05em"}}>LOCAL DELIVERY · LITCHFIELD COUNTY, CT</p>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <button onClick={()=>navigate("request")} style={{background:rust,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>
-            🛵 Request a Delivery
-          </button>
-          <button onClick={()=>navigate("track")} style={{background:ink,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:600}}>
-            📍 Track My Order
-          </button>
-          <button onClick={()=>navigate("dashboard")} style={{background:"none",color:muted,border:"1px solid "+border,padding:"12px 24px",fontSize:13,borderRadius:6,cursor:"pointer"}}>
-            Driver Login
-          </button>
+          <button onClick={()=>navigate("request")} style={{background:rust,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>🛵 Request a Delivery</button>
+          <button onClick={()=>navigate("track")} style={{background:ink,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:600}}>📍 Track My Order</button>
+          <button onClick={()=>navigate("drive")} style={{background:"none",color:rust,border:"1px solid "+rust,padding:"12px 24px",fontSize:13,borderRadius:6,cursor:"pointer",fontWeight:600}}>🚗 Drive With Us</button>
+          <button onClick={()=>navigate("dashboard")} style={{background:"none",color:muted,border:"1px solid "+border,padding:"12px 24px",fontSize:13,borderRadius:6,cursor:"pointer"}}>Driver Login</button>
         </div>
         <p style={{color:muted,fontSize:12,marginTop:24}}>Restaurant? Ask your DELIVERme driver for your portal link.</p>
       </div>
@@ -217,16 +218,13 @@ function LandingPage({ navigate }) {
   );
 }
 
-// ── PIN Entry ─────────────────────────────────────────────────
 function PinEntry({ onSuccess }) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
-
   const check = () => {
     if (pin === DRIVER_PIN) { onSuccess(); }
     else { setError(true); setPin(""); setTimeout(()=>setError(false),2000); }
   };
-
   return (
     <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
       <div style={{textAlign:"center",maxWidth:320,width:"100%"}}>
@@ -237,24 +235,87 @@ function PinEntry({ onSuccess }) {
         </div>
         <div style={{background:"white",border:"1px solid "+border,borderRadius:8,padding:24}}>
           <p style={{fontSize:13,color:muted,marginBottom:16}}>Enter your PIN to continue</p>
-          <input
-            type="password" inputMode="numeric" maxLength={4}
-            value={pin} onChange={e=>setPin(e.target.value)}
-            onKeyDown={e=>e.key==="Enter"&&check()}
+          <input type="password" inputMode="numeric" maxLength={4} value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&check()}
             style={{width:"100%",padding:"12px",fontSize:24,textAlign:"center",border:"1px solid "+(error?"#DC3545":border),borderRadius:6,background:cream,letterSpacing:8,outline:"none",marginBottom:12}}
-            placeholder="····" autoFocus
-          />
+            placeholder="····" autoFocus />
           {error && <p style={{color:"#DC3545",fontSize:13,marginBottom:12}}>Wrong PIN. Try again.</p>}
-          <button onClick={check} style={{width:"100%",background:rust,color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:600}}>
-            Enter Dashboard
-          </button>
+          <button onClick={check} style={{width:"100%",background:rust,color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:600}}>Enter Dashboard</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Driver Dashboard ──────────────────────────────────────────
+function DriverSignup({ navigate }) {
+  const [form, setForm] = useState({ name:"", phone:"", email:"", vehicle:"", area:"", licenseNumber:"" });
+  const [agreed, setAgreed] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const handleChange = e => setForm(prev => ({...prev, [e.target.name]: e.target.value}));
+  const submit = async () => {
+    if (!form.name || !form.phone || !agreed) return;
+    setLoading(true);
+    try {
+      await sb.createDriver({ name: form.name, phone: form.phone, email: form.email, vehicle: form.vehicle, area: form.area, license_number: form.licenseNumber, agreed_to_terms: agreed, status: "pending" });
+      sendSMS("+19296908573", "🚗 New DELIVERme driver application!\n"+form.name+" ("+form.phone+")\nVehicle: "+form.vehicle+"\nArea: "+form.area);
+      setSubmitted(true);
+    } catch(e) { alert("Error submitting. Please try again."); }
+    finally { setLoading(false); }
+  };
+  if (submitted) return (
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{textAlign:"center",maxWidth:400}}>
+        <div style={{fontSize:56,marginBottom:12}}>✓</div>
+        <h2 style={{fontSize:24,fontWeight:900,color:ink,marginBottom:8}}>Application Received!</h2>
+        <p style={{color:muted,fontSize:14,marginBottom:24}}>Thanks for your interest in driving with DELIVERme. We'll review your application and follow up to collect your license and insurance documents.</p>
+        <button onClick={()=>navigate("")} style={{width:"100%",background:ink,color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>← Back to Home</button>
+      </div>
+    </div>
+  );
+  const disclosure = "INDEPENDENT CONTRACTOR AGREEMENT — Please read carefully.\n\nDELIVERme is a service operated by Ancillary LLC (\"the Company\"), a Connecticut limited liability company. By submitting this application and providing delivery services, you acknowledge and agree to the following:\n\n1. INDEPENDENT CONTRACTOR STATUS. You are an independent contractor, not an employee, agent, partner, or joint venturer of the Company. Nothing here creates an employment relationship. You are free to accept or decline any delivery and to work for others.\n\n2. NO EMPLOYEE BENEFITS. You are not entitled to any employee benefits, including health insurance, workers' compensation, unemployment insurance, paid leave, or retirement benefits.\n\n3. TAXES. You are solely responsible for reporting and paying all federal, state, and local taxes on income you earn, including self-employment taxes. The Company will not withhold taxes on your behalf.\n\n4. VEHICLE, LICENSE & INSURANCE. You are solely responsible for maintaining a valid driver's license, current vehicle registration, and adequate vehicle insurance meeting or exceeding Connecticut's legal minimums. You must provide proof of valid license and insurance upon request. You bear all costs of operating and maintaining your vehicle.\n\n5. CONDUCT & RESPONSIBILITY. You are solely responsible for your own conduct, safety, and compliance with all applicable laws while providing services. You assume all risks associated with performing deliveries. The Company is not liable for any injury, loss, damage, or claim arising from your actions or operation of a vehicle.\n\n6. INDEMNIFICATION. You agree to indemnify and hold harmless the Company, its owners, and affiliates from any claims, damages, or liabilities arising out of your performance of services or breach of this agreement.\n\n7. NO GUARANTEE OF WORK. The Company makes no guarantee of any minimum amount of work, deliveries, or income.\n\n8. TERMINATION. Either party may end this relationship at any time, with or without cause.\n\nThis is a preliminary agreement. A full contractor agreement may be required before you begin providing services. This document does not constitute legal advice.";
+  return (
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",color:ink}}>
+      <style>{`*{box-sizing:border-box;margin:0;padding:0} input,textarea{font-family:inherit}`}</style>
+      <header style={{background:"white",borderBottom:"1px solid #DDD5C8",padding:"14px 20px"}}>
+        <div style={{maxWidth:520,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div><span style={{fontWeight:900,color:rust,fontSize:18}}>DELIVER</span><span style={{fontWeight:700,color:ink,fontSize:18}}>me</span></div>
+          <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>← Home</button>
+        </div>
+      </header>
+      <main style={{maxWidth:520,margin:"0 auto",padding:"24px 16px"}}>
+        <div style={{marginBottom:24}}>
+          <h1 style={{fontSize:26,fontWeight:900}}>Drive with DELIVERme</h1>
+          <p style={{color:muted,fontSize:13,marginTop:6}}>Earn money delivering in your community. Set your own schedule. Apply below.</p>
+        </div>
+        <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20,display:"flex",flexDirection:"column",gap:16}}>
+          {[
+            {label:"Full Name *",name:"name",placeholder:"John Driver",type:"text"},
+            {label:"Phone *",name:"phone",placeholder:"(860) 555-0000",type:"tel"},
+            {label:"Email",name:"email",placeholder:"you@email.com",type:"email"},
+            {label:"Vehicle (make, model, year)",name:"vehicle",placeholder:"Toyota Camry 2019",type:"text"},
+            {label:"Towns You Can Cover",name:"area",placeholder:"Canaan, Salisbury, Lakeville...",type:"text"},
+            {label:"Driver's License Number",name:"licenseNumber",placeholder:"CT license #",type:"text"},
+          ].map(f=>(
+            <div key={f.name}>
+              <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>{f.label}</label>
+              <input name={f.name} value={form[f.name]} onChange={handleChange} placeholder={f.placeholder} type={f.type} style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
+            </div>
+          ))}
+          <div>
+            <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Independent Contractor Terms</label>
+            <textarea readOnly value={disclosure} rows={8} style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:11,lineHeight:1.5,background:"#F4EFE6",color:ink,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
+          </div>
+          <label style={{display:"flex",alignItems:"flex-start",gap:10,cursor:"pointer"}}>
+            <input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)} style={{marginTop:3,width:18,height:18,flexShrink:0}}/>
+            <span style={{fontSize:13,color:ink}}>I have read and agree to the Independent Contractor terms above. I understand I am an independent contractor, not an employee of Ancillary LLC, and am solely responsible for my own license, insurance, taxes, and conduct.</span>
+          </label>
+          <button onClick={submit} disabled={loading||!form.name||!form.phone||!agreed} style={{width:"100%",background:(!form.name||!form.phone||!agreed)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>{loading ? "Submitting..." : "Submit Application"}</button>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 function Dashboard({ navigate }) {
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState("all");
@@ -262,16 +323,14 @@ function Dashboard({ navigate }) {
   const [tab, setTab] = useState("orders");
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [ratingOrder, setRatingOrder] = useState(null);
-
+  const [available, setAvailable] = useState(true);
   const knownIds = useRef(new Set());
 
   const loadOrders = async () => {
     try {
       const data = await sb.getOrders();
       const newPendingOrders = data.filter(o => o.status === "pending" && !knownIds.current.has(o.id));
-      if (knownIds.current.size > 0 && newPendingOrders.length > 0) {
-        playChime();
-      }
+      if (knownIds.current.size > 0 && newPendingOrders.length > 0) { playChime(); }
       data.forEach(o => knownIds.current.add(o.id));
       setOrders(data);
     } catch(e) {}
@@ -283,6 +342,14 @@ function Dashboard({ navigate }) {
     const t = setInterval(loadOrders, 15000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => { sb.getAvailability().then(setAvailable).catch(()=>{}); }, []);
+
+  const toggleAvailable = async () => {
+    const next = !available;
+    setAvailable(next);
+    try { await sb.setAvailability(next); } catch(e) { setAvailable(!next); alert("Could not update status."); }
+  };
 
   const updateStatus = async (id, newStatus) => {
     try {
@@ -341,13 +408,10 @@ function Dashboard({ navigate }) {
           <span style={{fontWeight:700,color:ink,fontSize:18}}>me</span>
           <span style={{fontSize:11,color:muted,marginLeft:8,textTransform:"uppercase",letterSpacing:".08em"}}>Dashboard</span>
         </div>
-        <div style={{display:"flex",gap:8}}>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={toggleAvailable} style={{padding:"6px 12px",fontSize:11,border:"none",background:available?"#27AE60":"#DC3545",color:"white",borderRadius:4,cursor:"pointer",fontWeight:700}}>{available ? "🟢 Available" : "🔴 Offline"}</button>
           {!audioUnlocked ? (
-            <button className="btn btn-red" style={{padding:"6px 12px",fontSize:11}} onClick={()=>{
-              unlockAudio();
-              playChime();
-              setAudioUnlocked(true);
-            }}>🔔 Enable Sound</button>
+            <button className="btn btn-red" style={{padding:"6px 12px",fontSize:11}} onClick={()=>{ unlockAudio(); playChime(); setAudioUnlocked(true); }}>🔔 Enable Sound</button>
           ) : (
             <button className="btn btn-outline" style={{padding:"6px 12px",fontSize:11,borderColor:"#27AE60",color:"#27AE60"}} onClick={()=>{playChime();}}>🔔 ✓</button>
           )}
@@ -357,29 +421,15 @@ function Dashboard({ navigate }) {
           <button className="btn btn-outline" style={{padding:"6px 12px",fontSize:11}} onClick={()=>{sessionStorage.removeItem("dm_authed");window.location.hash="";}}>Exit</button>
         </div>
       </header>
-
       <main style={{maxWidth:800,margin:"0 auto",padding:"20px 16px"}}>
-
-        {/* Tab switcher */}
-        <div style={{display:"flex",gap:6,marginBottom:20}}>
-          <button onClick={()=>setTab("orders")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="orders"?ink:border),background:tab==="orders"?ink:"transparent",color:tab==="orders"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>
-            Orders
-          </button>
-          <button onClick={()=>setTab("restaurants")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="restaurants"?ink:border),background:tab==="restaurants"?ink:"transparent",color:tab==="restaurants"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>
-            🏪 Restaurants
-          </button>
-          <button onClick={()=>setTab("ratings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="ratings"?ink:border),background:tab==="ratings"?ink:"transparent",color:tab==="ratings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>
-            ⭐ Ratings
-          </button>
-          <button onClick={()=>setTab("qr")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="qr"?ink:border),background:tab==="qr"?ink:"transparent",color:tab==="qr"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>
-            📲 QR Code
-          </button>
-          <button onClick={()=>setTab("earnings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="earnings"?ink:border),background:tab==="earnings"?ink:"transparent",color:tab==="earnings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>
-            💵 Earnings
-          </button>
+        <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>
+          <button onClick={()=>setTab("orders")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="orders"?ink:border),background:tab==="orders"?ink:"transparent",color:tab==="orders"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>Orders</button>
+          <button onClick={()=>setTab("restaurants")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="restaurants"?ink:border),background:tab==="restaurants"?ink:"transparent",color:tab==="restaurants"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>🏪 Restaurants</button>
+          <button onClick={()=>setTab("ratings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="ratings"?ink:border),background:tab==="ratings"?ink:"transparent",color:tab==="ratings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>⭐ Ratings</button>
+          <button onClick={()=>setTab("qr")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="qr"?ink:border),background:tab==="qr"?ink:"transparent",color:tab==="qr"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>📲 QR Code</button>
+          <button onClick={()=>setTab("earnings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="earnings"?ink:border),background:tab==="earnings"?ink:"transparent",color:tab==="earnings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>💵 Earnings</button>
         </div>
 
-        {/* Restaurants Panel */}
         {tab==="restaurants" && (
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             <p style={{fontSize:13,color:muted,marginBottom:4}}>Share these links with each restaurant. They bookmark it and use it every time they have a delivery.</p>
@@ -393,11 +443,7 @@ function Dashboard({ navigate }) {
                       <div style={{fontSize:12,color:muted,marginBottom:6}}>{r.address}</div>
                       <div style={{fontSize:11,color:rust,wordBreak:"break-all"}}>{link}</div>
                     </div>
-                    <button onClick={()=>{
-                      navigator.clipboard.writeText(link).then(()=>alert("Link copied!")).catch(()=>alert(link));
-                    }} style={{background:ink,color:"white",border:"none",padding:"8px 14px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap"}}>
-                      Copy Link
-                    </button>
+                    <button onClick={()=>{ navigator.clipboard.writeText(link).then(()=>alert("Link copied!")).catch(()=>alert(link)); }} style={{background:ink,color:"white",border:"none",padding:"8px 14px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap"}}>Copy Link</button>
                   </div>
                 </div>
               );
@@ -417,17 +463,12 @@ function Dashboard({ navigate }) {
             </div>
           ))}
         </div>
-
         <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
           {["all","pending","active","delivered","paid","cancelled"].map(f=>(
-            <button key={f} onClick={()=>setFilter(f)} style={{padding:"5px 14px",fontSize:11,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(filter===f?ink:border),background:filter===f?ink:"transparent",color:filter===f?"white":muted,borderRadius:4,cursor:"pointer"}}>
-              {f}
-            </button>
+            <button key={f} onClick={()=>setFilter(f)} style={{padding:"5px 14px",fontSize:11,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(filter===f?ink:border),background:filter===f?ink:"transparent",color:filter===f?"white":muted,borderRadius:4,cursor:"pointer"}}>{f}</button>
           ))}
         </div>
-
         {loading && <div style={{textAlign:"center",padding:"40px 0",color:muted}}>Loading orders...</div>}
-
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           {!loading && filtered.length===0 && <div style={{textAlign:"center",padding:"40px 0",color:muted,fontSize:13}}>No orders here</div>}
           {filtered.map(order => {
@@ -438,10 +479,7 @@ function Dashboard({ navigate }) {
                   <div style={{flex:1,minWidth:200}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                       <span style={{fontWeight:700,fontSize:15}}>{order.restaurant_name}</span>
-                      <span className="tag" style={{background:sc.bg,color:sc.text}}>
-                        <span className={"dot"+(order.status==="active"?" pulse":"")} style={{background:sc.dot}}/>
-                        {order.status}
-                      </span>
+                      <span className="tag" style={{background:sc.bg,color:sc.text}}><span className={"dot"+(order.status==="active"?" pulse":"")} style={{background:sc.dot}}/>{order.status}</span>
                     </div>
                     <div style={{fontSize:11,color:muted,marginBottom:6,letterSpacing:".05em"}}>Order #{order.id.slice(0,8).toUpperCase()}</div>
                     <div style={{fontSize:13,marginBottom:2}}><strong>{order.customer_name}</strong> · {order.customer_phone}</div>
@@ -457,28 +495,20 @@ function Dashboard({ navigate }) {
                         <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11}} onClick={()=>updateStatus(order.id,"active")}>Accept</button>
                         <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11}} onClick={()=>updateStatus(order.id,"cancelled")}>Decline</button>
                       </>}
-                      {order.status==="ready_for_pickup" && <>
-                        <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11,background:"#FF6B1A"}} onClick={()=>updateStatus(order.id,"picked_up")}>Picked Up ✓</button>
-                      </>}
-                      {order.status==="active" && <>
-                        <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11,background:"#9B59B6"}} onClick={()=>updateStatus(order.id,"picked_up")}>Picked Up</button>
-                      </>}
+                      {order.status==="ready_for_pickup" && <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11,background:"#FF6B1A"}} onClick={()=>updateStatus(order.id,"picked_up")}>Picked Up ✓</button>}
+                      {order.status==="active" && <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11,background:"#9B59B6"}} onClick={()=>updateStatus(order.id,"picked_up")}>Picked Up</button>}
                       {order.status==="picked_up" && <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11}} onClick={()=>updateStatus(order.id,"delivered")}>Mark Delivered</button>}
                       {order.status==="delivered" && <button className="btn btn-outline" style={{padding:"7px 14px",fontSize:11,borderColor:"#27AE60",color:"#27AE60"}} onClick={()=>{updateStatus(order.id,"paid"); setRatingOrder(order);}}>💰 Mark Paid</button>}
                       {order.status==="paid" && <span style={{fontSize:11,color:"#27AE60",fontWeight:700}}>💰 Paid ✓</span>}
                       {(order.status==="paid"||order.status==="cancelled") && (
-                        <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11,borderColor:"#DC3545",color:"#DC3545"}} onClick={async()=>{
-                          if(confirm("Delete this order?")) {
-                            try { await sb.deleteOrder(order.id); setOrders(prev=>prev.filter(o=>o.id!==order.id)); } catch(e){ alert("Failed to delete."); }
-                          }
-                        }}>🗑 Delete</button>
+                        <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11,borderColor:"#DC3545",color:"#DC3545"}} onClick={async()=>{ if(confirm("Delete this order?")) { try { await sb.deleteOrder(order.id); setOrders(prev=>prev.filter(o=>o.id!==order.id)); } catch(e){ alert("Failed to delete."); } } }}>🗑 Delete</button>
                       )}
-                      {order.status!=="cancelled" && order.status!=="delivered" && (
+                      {order.status!=="cancelled" && order.status!=="delivered" && order.status!=="paid" && (
                         <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11}} onClick={()=>{
                           const shortId = order.id.slice(0,8).toUpperCase();
                           const trackUrl = window.location.origin + "/#track/" + shortId;
-                          const msg = `Hi ${order.customer_name}! Your order from ${order.restaurant_name} is on its way 🚗\n\nTrack your delivery here:\n${trackUrl}\n\nDelivery fee: $${Number(order.delivery_fee).toFixed(2)}\nPay via Venmo @Delivermeapp, CashApp $Delivermeapp, or cash at drop-off.`;
-                          window.open(`sms:${order.customer_phone}?body=${encodeURIComponent(msg)}`);
+                          const msg = "Hi "+order.customer_name+"! Your order from "+order.restaurant_name+" is on its way 🚗\n\nTrack your delivery here:\n"+trackUrl+"\n\nDelivery fee: $"+Number(order.delivery_fee).toFixed(2)+"\nPay by card, or cash at drop-off.";
+                          window.open("sms:"+order.customer_phone+"?body="+encodeURIComponent(msg));
                         }}>📲 Text Customer</button>
                       )}
                     </div>
@@ -493,36 +523,19 @@ function Dashboard({ navigate }) {
         {tab==="ratings" && <RatingsPanel/>}
         {tab==="qr" && <QRPanel/>}
         {tab==="earnings" && <EarningsPanel/>}
-
       </main>
 
-      {/* Rating Modal */}
       {ratingOrder && (
         <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
           <div style={{background:"white",borderRadius:12,padding:24,maxWidth:380,width:"100%"}}>
             <h3 style={{fontSize:17,fontWeight:900,marginBottom:4}}>Rate {ratingOrder.restaurant_name}</h3>
             <p style={{fontSize:13,color:muted,marginBottom:20}}>How was their tipping behavior on this order?</p>
             <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
-              {[
-                {stars:5, label:"⭐⭐⭐⭐⭐ Excellent tipper"},
-                {stars:4, label:"⭐⭐⭐⭐ Good tipper"},
-                {stars:3, label:"⭐⭐⭐ Average"},
-                {stars:2, label:"⭐⭐ Rarely tips"},
-                {stars:1, label:"⭐ Never tips"},
-              ].map(r=>(
-                <button key={r.stars} onClick={async()=>{
-                  try {
-                    await sb.saveRating(ratingOrder.restaurant_name, ratingOrder.restaurant_slug, ratingOrder.id, r.stars>=3, 0, r.stars);
-                    setRatingOrder(null);
-                  } catch(e){ alert("Could not save rating."); }
-                }} style={{padding:"12px 16px",border:"1px solid #DDD5C8",borderRadius:6,background:"white",cursor:"pointer",fontSize:14,textAlign:"left",fontWeight:500}}>
-                  {r.label}
-                </button>
+              {[{stars:5,label:"⭐⭐⭐⭐⭐ Excellent tipper"},{stars:4,label:"⭐⭐⭐⭐ Good tipper"},{stars:3,label:"⭐⭐⭐ Average"},{stars:2,label:"⭐⭐ Rarely tips"},{stars:1,label:"⭐ Never tips"}].map(r=>(
+                <button key={r.stars} onClick={async()=>{ try { await sb.saveRating(ratingOrder.restaurant_name, ratingOrder.restaurant_slug, ratingOrder.id, r.stars>=3, 0, r.stars); setRatingOrder(null); } catch(e){ alert("Could not save rating."); } }} style={{padding:"12px 16px",border:"1px solid #DDD5C8",borderRadius:6,background:"white",cursor:"pointer",fontSize:14,textAlign:"left",fontWeight:500}}>{r.label}</button>
               ))}
             </div>
-            <button onClick={()=>setRatingOrder(null)} style={{width:"100%",background:"none",color:muted,border:"none",padding:"10px",cursor:"pointer",fontSize:13}}>
-              Skip for now
-            </button>
+            <button onClick={()=>setRatingOrder(null)} style={{width:"100%",background:"none",color:muted,border:"none",padding:"10px",cursor:"pointer",fontSize:13}}>Skip for now</button>
           </div>
         </div>
       )}
@@ -530,19 +543,11 @@ function Dashboard({ navigate }) {
   );
 }
 
-// ── Earnings Panel ────────────────────────────────────────────
 function EarningsPanel() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("week");
-
-  useEffect(()=>{
-    sb.getOrders().then(data=>{
-      setOrders(data.filter(o=>o.status==="paid"));
-      setLoading(false);
-    }).catch(()=>setLoading(false));
-  },[]);
-
+  useEffect(()=>{ sb.getOrders().then(data=>{ setOrders(data.filter(o=>o.status==="paid")); setLoading(false); }).catch(()=>setLoading(false)); },[]);
   const now = new Date();
   const startOf = (p) => {
     const d = new Date(now);
@@ -551,13 +556,10 @@ function EarningsPanel() {
     if(p==="month") { d.setDate(1); d.setHours(0,0,0,0); return d; }
     return new Date(0);
   };
-
   const filtered = orders.filter(o => new Date(o.created_at) >= startOf(period));
   const total = filtered.reduce((sum, o) => sum + Number(o.delivery_fee || 8), 0);
   const count = filtered.length;
   const avg = count > 0 ? total / count : 0;
-
-  // Group by day for the current period
   const byDay = {};
   filtered.forEach(o => {
     const day = new Date(o.created_at).toLocaleDateString("en-US", {weekday:"short", month:"short", day:"numeric"});
@@ -565,54 +567,34 @@ function EarningsPanel() {
     byDay[day].count++;
     byDay[day].total += Number(o.delivery_fee || 8);
   });
-
   const days = Object.entries(byDay).reverse();
-
   return (
     <div className="fade-in">
       <div style={{marginBottom:16}}>
         <h2 style={{fontSize:20,fontWeight:900}}>💵 Earnings</h2>
         <p style={{fontSize:13,color:muted,marginTop:4}}>Based on paid orders</p>
       </div>
-
-      {/* Period selector */}
       <div style={{display:"flex",gap:6,marginBottom:16}}>
         {[{val:"today",label:"Today"},{val:"week",label:"This Week"},{val:"month",label:"This Month"},{val:"all",label:"All Time"}].map(p=>(
-          <button key={p.val} onClick={()=>setPeriod(p.val)}
-            style={{flex:1,padding:"8px 4px",border:"1px solid "+(period===p.val?ink:border),background:period===p.val?ink:"white",color:period===p.val?"white":muted,borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>
-            {p.label}
-          </button>
+          <button key={p.val} onClick={()=>setPeriod(p.val)} style={{flex:1,padding:"8px 4px",border:"1px solid "+(period===p.val?ink:border),background:period===p.val?ink:"white",color:period===p.val?"white":muted,borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>{p.label}</button>
         ))}
       </div>
-
-      {/* Summary cards */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
-        {[
-          {label:"Total Earned", val:"$"+total.toFixed(2), color:green},
-          {label:"Deliveries", val:count, color:rust},
-          {label:"Avg per Run", val:"$"+avg.toFixed(2), color:"#2980B9"}
-        ].map(s=>(
+        {[{label:"Total Earned", val:"$"+total.toFixed(2), color:green},{label:"Deliveries", val:count, color:rust},{label:"Avg per Run", val:"$"+avg.toFixed(2), color:"#2980B9"}].map(s=>(
           <div key={s.label} style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:"14px 10px",textAlign:"center"}}>
             <div style={{fontSize:20,fontWeight:900,color:s.color}}>{s.val}</div>
             <div style={{fontSize:10,color:muted,marginTop:4,textTransform:"uppercase",letterSpacing:".05em"}}>{s.label}</div>
           </div>
         ))}
       </div>
-
-      {/* Daily breakdown */}
       {loading && <div style={{textAlign:"center",padding:"20px",color:muted}}>Loading...</div>}
-      {!loading && days.length === 0 && (
-        <div style={{textAlign:"center",padding:"30px",color:muted,fontSize:13}}>No paid orders in this period yet.</div>
-      )}
+      {!loading && days.length === 0 && (<div style={{textAlign:"center",padding:"30px",color:muted,fontSize:13}}>No paid orders in this period yet.</div>)}
       {days.length > 0 && (
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           <p style={{fontSize:11,color:muted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:4}}>Daily Breakdown</p>
           {days.map(([day, data])=>(
             <div key={day} style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div>
-                <div style={{fontWeight:600,fontSize:14}}>{day}</div>
-                <div style={{fontSize:12,color:muted}}>{data.count} delivery{data.count!==1?"s":""}</div>
-              </div>
+              <div><div style={{fontWeight:600,fontSize:14}}>{day}</div><div style={{fontSize:12,color:muted}}>{data.count} delivery{data.count!==1?"s":""}</div></div>
               <div style={{fontWeight:900,fontSize:18,color:green}}>${data.total.toFixed(2)}</div>
             </div>
           ))}
@@ -622,26 +604,22 @@ function EarningsPanel() {
   );
 }
 
-// ── QR Code Panel ─────────────────────────────────────────────
 function QRPanel() {
   const baseUrl = window.location.origin;
   const qrCodes = [
     { label: "Customer Request", url: baseUrl+"/#request", desc: "Customers scan to request a delivery" },
     { label: "Track Order", url: baseUrl+"/#track", desc: "Customers scan to track their order" },
+    { label: "Driver Signup", url: baseUrl+"/#drive", desc: "Interested drivers scan to apply" },
   ];
-
-  // Add restaurant QR codes
   Object.entries(RESTAURANTS).filter(([slug])=>slug!=="general").forEach(([slug, r]) => {
     qrCodes.push({ label: r.name, url: baseUrl+"/#restaurant/"+slug, desc: "Restaurant portal link" });
   });
-
-  const qrUrl = (url) => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
-
+  const qrUrl = (url) => "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data="+encodeURIComponent(url);
   return (
     <div className="fade-in">
       <div style={{marginBottom:16}}>
         <h2 style={{fontSize:20,fontWeight:900}}>📲 QR Codes</h2>
-        <p style={{fontSize:13,color:muted,marginTop:4}}>Print or display these for customers and restaurants</p>
+        <p style={{fontSize:13,color:muted,marginTop:4}}>Print or display these for customers, drivers, and restaurants</p>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         {qrCodes.map(qr=>(
@@ -651,20 +629,10 @@ function QRPanel() {
               <div style={{flex:1}}>
                 <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{qr.label}</div>
                 <div style={{fontSize:12,color:muted,marginBottom:8}}>{qr.desc}</div>
-                <div style={{fontSize:10,color:rust,wordBreak:"break-all",marginBottom:8}}>
-                  <a href={qr.url} target="_blank" style={{color:rust,textDecoration:"underline"}}>{qr.url}</a>
-                </div>
+                <div style={{fontSize:10,color:rust,wordBreak:"break-all",marginBottom:8}}><a href={qr.url} target="_blank" style={{color:rust,textDecoration:"underline"}}>{qr.url}</a></div>
                 <div style={{display:"flex",gap:8}}>
-                  <button onClick={()=>{navigator.clipboard.writeText(qr.url).then(()=>alert("Link copied!")).catch(()=>alert(qr.url));}}
-                    style={{background:ink,color:"white",border:"none",padding:"6px 14px",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>
-                    Copy
-                  </button>
-                  <button onClick={()=>{
-                    if(navigator.share) navigator.share({title:"DELIVERme — "+qr.label, url:qr.url});
-                    else navigator.clipboard.writeText(qr.url).then(()=>alert("Link copied!"));
-                  }} style={{background:rust,color:"white",border:"none",padding:"6px 14px",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>
-                    Share
-                  </button>
+                  <button onClick={()=>{navigator.clipboard.writeText(qr.url).then(()=>alert("Link copied!")).catch(()=>alert(qr.url));}} style={{background:ink,color:"white",border:"none",padding:"6px 14px",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>Copy</button>
+                  <button onClick={()=>{ if(navigator.share) navigator.share({title:"DELIVERme — "+qr.label, url:qr.url}); else navigator.clipboard.writeText(qr.url).then(()=>alert("Link copied!")); }} style={{background:rust,color:"white",border:"none",padding:"6px 14px",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>Share</button>
                 </div>
               </div>
             </div>
@@ -675,35 +643,17 @@ function QRPanel() {
   );
 }
 
-// ── Ratings Panel ─────────────────────────────────────────────
 function RatingsPanel() {
   const [ratings, setRatings] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(()=>{
-    sb.getRatings().then(data=>{
-      setRatings(data);
-      setLoading(false);
-    }).catch(()=>setLoading(false));
-  },[]);
-
-  // Calculate average rating per restaurant
+  useEffect(()=>{ sb.getRatings().then(data=>{ setRatings(data); setLoading(false); }).catch(()=>setLoading(false)); },[]);
   const byRestaurant = {};
-  ratings.forEach(r => {
-    if (!byRestaurant[r.restaurant_name]) byRestaurant[r.restaurant_name] = [];
-    byRestaurant[r.restaurant_name].push(r.rating);
-  });
-
+  ratings.forEach(r => { if (!byRestaurant[r.restaurant_name]) byRestaurant[r.restaurant_name] = []; byRestaurant[r.restaurant_name].push(r.rating); });
   const restaurantStats = Object.entries(byRestaurant).map(([name, ratingsList]) => {
     const avg = ratingsList.reduce((a,b)=>a+b,0) / ratingsList.length;
     return { name, avg, count: ratingsList.length };
   }).sort((a,b)=>b.avg-a.avg);
-
-  const stars = (avg) => {
-    const full = Math.round(avg);
-    return "⭐".repeat(full) + (full < 5 ? "☆".repeat(5-full) : "");
-  };
-
+  const stars = (avg) => { const full = Math.round(avg); return "⭐".repeat(full) + (full < 5 ? "☆".repeat(5-full) : ""); };
   const label = (avg) => {
     if(avg>=4.5) return {text:"Excellent tipper", color:"#27AE60"};
     if(avg>=3.5) return {text:"Good tipper", color:"#2980B9"};
@@ -711,7 +661,6 @@ function RatingsPanel() {
     if(avg>=1.5) return {text:"Rarely tips", color:"#E67E22"};
     return {text:"Never tips", color:"#DC3545"};
   };
-
   return (
     <div className="fade-in">
       <div style={{marginBottom:16}}>
@@ -719,9 +668,7 @@ function RatingsPanel() {
         <p style={{fontSize:13,color:"#7A7065",marginTop:4}}>Private — only you can see this</p>
       </div>
       {loading && <div style={{textAlign:"center",padding:"40px 0",color:"#7A7065"}}>Loading...</div>}
-      {!loading && restaurantStats.length===0 && (
-        <div style={{textAlign:"center",padding:"40px 0",color:"#7A7065",fontSize:13}}>No ratings yet. Rate restaurants after marking orders paid.</div>
-      )}
+      {!loading && restaurantStats.length===0 && (<div style={{textAlign:"center",padding:"40px 0",color:"#7A7065",fontSize:13}}>No ratings yet. Rate restaurants after marking orders paid.</div>)}
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {restaurantStats.map(r=>{
           const l = label(r.avg);
@@ -746,72 +693,33 @@ function RatingsPanel() {
   );
 }
 
-// ── Restaurant Portal ─────────────────────────────────────────
 function RestaurantPortal({ restaurant, slug }) {
   const isGeneral = !restaurant.name;
-  const [form, setForm] = useState({
-    restaurantName: restaurant.name || "",
-    restaurantAddress: restaurant.address || "",
-    customerName:"",customerPhone:"",dropoffAddress:"",orderDetails:"",notes:"",deliveryFee:restaurant.defaultFee
-  });
+  const [form, setForm] = useState({ restaurantName: restaurant.name || "", restaurantAddress: restaurant.address || "", customerName:"",customerPhone:"",dropoffAddress:"",orderDetails:"",notes:"",deliveryFee:restaurant.defaultFee });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [orderId, setOrderId] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
   const [showOrders, setShowOrders] = useState(false);
-  const [tip, setTip] = useState(0);
-  const [customTip, setCustomTip] = useState("");
   const [tipped, setTipped] = useState(false);
-  const [prefMethod, setPrefMethod] = useState(localStorage.getItem("dm_tip_method") || null);
+  const [available, setAvailable] = useState(true);
+  useEffect(() => { sb.getAvailability().then(setAvailable).catch(()=>setAvailable(true)); }, []);
 
-  const savePrefMethod = (method) => {
-    localStorage.setItem("dm_tip_method", method);
-    setPrefMethod(method);
-  };
-
-  const tipWithMethod = (amount) => {
-    const link = STRIPE_TIPS[amount] || STRIPE_TIPS[1];
-    window.open(link, "_blank");
-  };
-
+  const tipWithMethod = (amount) => { const link = STRIPE_TIPS[amount] || STRIPE_TIPS[1]; window.open(link, "_blank"); };
   const restaurantName = form.restaurantName || restaurant.name;
-
   const loadRecentOrders = async () => {
     if (!restaurantName) return;
-    try {
-      const all = await sb.getOrders();
-      const mine = all.filter(o => o.restaurant_name === restaurantName);
-      setRecentOrders(mine.slice(0, 10));
-    } catch(e) {}
+    try { const all = await sb.getOrders(); const mine = all.filter(o => o.restaurant_name === restaurantName); setRecentOrders(mine.slice(0, 10)); } catch(e) {}
   };
-
   useEffect(() => { if (showOrders) loadRecentOrders(); }, [showOrders]);
 
   const statusColors = {
-    pending:{bg:"#FFF3CD",text:"#856404",dot:"#FFC107"},
-    ready_for_pickup:{bg:"#FFE8D6",text:"#B94A00",dot:"#FF6B1A"},
-    active:{bg:"#D1ECF1",text:"#0C5460",dot:"#17A2B8"},
-    picked_up:{bg:"#E8D5F5",text:"#6B1FA3",dot:"#9B59B6"},
-    delivered:{bg:"#D4EDDA",text:"#155724",dot:"#28A745"},
-    cancelled:{bg:"#F8D7DA",text:"#721C24",dot:"#DC3545"}
+    pending:{bg:"#FFF3CD",text:"#856404",dot:"#FFC107"}, ready_for_pickup:{bg:"#FFE8D6",text:"#B94A00",dot:"#FF6B1A"},
+    active:{bg:"#D1ECF1",text:"#0C5460",dot:"#17A2B8"}, picked_up:{bg:"#E8D5F5",text:"#6B1FA3",dot:"#9B59B6"},
+    delivered:{bg:"#D4EDDA",text:"#155724",dot:"#28A745"}, cancelled:{bg:"#F8D7DA",text:"#721C24",dot:"#DC3545"}
   };
-
-  const statusLabel = {
-    pending: "⏳ Waiting for driver",
-    active: "✅ Driver accepted — prepare order",
-    ready_for_pickup: "🚗 Driver on the way",
-    picked_up: "📦 Order picked up",
-    delivered: "✓ Delivered",
-    cancelled: "✗ Cancelled"
-  };
-
-  function timeAgo(iso) {
-    const d=Math.floor((Date.now()-new Date(iso))/1000);
-    if(d<60) return d+"s ago";
-    if(d<3600) return Math.floor(d/60)+"m ago";
-    return Math.floor(d/3600)+"h ago";
-  }
-
+  const statusLabel = { pending:"⏳ Waiting for driver", active:"✅ Driver accepted — prepare order", ready_for_pickup:"🚗 Driver on the way", picked_up:"📦 Order picked up", delivered:"✓ Delivered", cancelled:"✗ Cancelled" };
+  function timeAgo(iso) { const d=Math.floor((Date.now()-new Date(iso))/1000); if(d<60) return d+"s ago"; if(d<3600) return Math.floor(d/60)+"m ago"; return Math.floor(d/3600)+"h ago"; }
   const handleChange = e => setForm(prev=>({...prev,[e.target.name]:e.target.value}));
 
   const submit = async () => {
@@ -819,15 +727,7 @@ function RestaurantPortal({ restaurant, slug }) {
     if(isGeneral && !form.restaurantName) return;
     setLoading(true);
     try {
-      const order = {
-        restaurant_name: form.restaurantName || restaurant.name,
-        restaurant_address: form.restaurantAddress || restaurant.address,
-        restaurant_slug: slug,
-        customer_name:form.customerName, customer_phone:form.customerPhone,
-        dropoff_address:form.dropoffAddress, order_details:form.orderDetails,
-        notes:form.notes, delivery_fee:parseFloat(form.deliveryFee)||6,
-        status:"pending", created_at:new Date().toISOString()
-      };
+      const order = { restaurant_name: form.restaurantName || restaurant.name, restaurant_address: form.restaurantAddress || restaurant.address, restaurant_slug: slug, customer_name:form.customerName, customer_phone:form.customerPhone, dropoff_address:form.dropoffAddress, order_details:form.orderDetails, notes:form.notes, delivery_fee:parseFloat(form.deliveryFee)||8, status:"pending", created_at:new Date().toISOString() };
       const [created] = await sb.createOrder(order);
       setOrderId(created.id);
       sendSMS("+19296908573","🚗 New delivery from "+(form.restaurantName||restaurant.name)+"!\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+form.dropoffAddress+"\nFee: $"+form.deliveryFee);
@@ -837,9 +737,6 @@ function RestaurantPortal({ restaurant, slug }) {
   };
 
   if (submitted) {
-    const tipOptions = [1, 2, 3, 5];
-    const totalTip = customTip ? parseFloat(customTip) || 0 : tip;
-
     return (
       <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",padding:24}}>
         <div style={{maxWidth:400,margin:"0 auto",paddingTop:40}}>
@@ -849,41 +746,22 @@ function RestaurantPortal({ restaurant, slug }) {
             <p style={{color:muted,fontSize:14,marginBottom:4}}>Your driver has been notified.</p>
             {orderId && <p style={{fontSize:12,color:muted}}>Order ID: <strong>{orderId.slice(0,8).toUpperCase()}</strong></p>}
           </div>
-
-          {/* Ready for pickup button */}
-          <button onClick={async()=>{
-            try { await sb.updateOrder(orderId,{status:"ready_for_pickup"}); alert("Driver notified — order is ready for pickup!"); } catch(e){ alert("Could not update status."); }
-          }} style={{width:"100%",background:"#FF6B1A",color:"white",border:"none",padding:"14px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700,marginBottom:16}}>
-            🍔 Order is Ready for Pickup!
-          </button>
-
-          {/* Tip driver - card only */}
+          <div style={{background:"#FFF3CD",border:"1px solid #FFC107",borderRadius:8,padding:14,textAlign:"center",marginBottom:16}}>
+            <p style={{fontSize:13,color:"#856404",fontWeight:600}}>⏳ Waiting for your driver to accept. Once accepted, you can mark the order ready in "Recent Orders" below.</p>
+          </div>
           {!tipped ? (
             <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20,marginBottom:16}}>
               <h3 style={{fontSize:15,fontWeight:700,marginBottom:4}}>💝 Tip Your Driver</h3>
               <p style={{fontSize:12,color:muted,marginBottom:12}}>Show your appreciation for great service!</p>
               <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
-                {[1,2,3,5].map(t=>(
-                  <button key={t} onClick={()=>{window.open(STRIPE_TIPS[t], "_blank");setTipped(true);}}
-                    style={{flex:1,padding:"8px 4px",border:"none",background:"#635BFF",color:"white",borderRadius:4,cursor:"pointer",fontSize:13,fontWeight:600}}>
-                    ${t}
-                  </button>
-                ))}
+                {[1,2,3,5].map(t=>(<button key={t} onClick={()=>{window.open(STRIPE_TIPS[t], "_blank");setTipped(true);}} style={{flex:1,padding:"8px 4px",border:"none",background:"#635BFF",color:"white",borderRadius:4,cursor:"pointer",fontSize:13,fontWeight:600}}>${t}</button>))}
               </div>
-              <button onClick={()=>{window.open(STRIPE_TIPS[1], "_blank");setTipped(true);}}
-                style={{width:"100%",background:"white",color:"#635BFF",border:"1px solid #635BFF",padding:"10px",borderRadius:4,cursor:"pointer",fontSize:13,fontWeight:600}}>
-                💳 Custom amount — tap to enter quantity
-              </button>
+              <button onClick={()=>{window.open(STRIPE_TIPS[1], "_blank");setTipped(true);}} style={{width:"100%",background:"white",color:"#635BFF",border:"1px solid #635BFF",padding:"10px",borderRadius:4,cursor:"pointer",fontSize:13,fontWeight:600}}>💳 Custom amount — tap to enter quantity</button>
             </div>
           ) : (
-            <div style={{background:"#D4EDDA",border:"1px solid #C3E6CB",borderRadius:8,padding:16,textAlign:"center",marginBottom:16}}>
-              <p style={{fontWeight:700,color:"#155724"}}>🎉 Thanks for the tip!</p>
-            </div>
+            <div style={{background:"#D4EDDA",border:"1px solid #C3E6CB",borderRadius:8,padding:16,textAlign:"center",marginBottom:16}}><p style={{fontWeight:700,color:"#155724"}}>🎉 Thanks for the tip!</p></div>
           )}
-
-          <button onClick={()=>{setSubmitted(false);setOrderId(null);setForm({restaurantName:form.restaurantName,restaurantAddress:form.restaurantAddress,customerName:"",customerPhone:"",dropoffAddress:"",orderDetails:"",notes:"",deliveryFee:restaurant.defaultFee});}} style={{width:"100%",background:"none",color:muted,border:"1px solid #DDD5C8",padding:"11px",fontSize:13,borderRadius:6,cursor:"pointer"}}>
-            New Request
-          </button>
+          <button onClick={()=>{setSubmitted(false);setOrderId(null);setTipped(false);setForm({restaurantName:form.restaurantName,restaurantAddress:form.restaurantAddress,customerName:"",customerPhone:"",dropoffAddress:"",orderDetails:"",notes:"",deliveryFee:restaurant.defaultFee});}} style={{width:"100%",background:"none",color:muted,border:"1px solid #DDD5C8",padding:"11px",fontSize:13,borderRadius:6,cursor:"pointer"}}>New Request</button>
         </div>
       </div>
     );
@@ -904,70 +782,50 @@ function RestaurantPortal({ restaurant, slug }) {
           <h1 style={{fontSize:24,fontWeight:900}}>{restaurant.name || form.restaurantName || "Restaurant Portal"}</h1>
           <p style={{color:muted,fontSize:13,marginTop:4}}>{restaurant.address}</p>
         </div>
-
-        {/* Tip payment is Card only */}
+        {!available && (
+          <div style={{background:"#F8D7DA",border:"1px solid #DC3545",borderRadius:8,padding:16,marginBottom:16,textAlign:"center"}}>
+            <p style={{fontWeight:700,color:"#721C24"}}>🔴 DELIVERme is currently offline</p>
+            <p style={{fontSize:13,color:"#721C24",marginTop:4}}>Not accepting new orders right now. Please check back soon!</p>
+          </div>
+        )}
         <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20,display:"flex",flexDirection:"column",gap:16}}>
           {isGeneral && <>
             <div>
               <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Restaurant Name *</label>
-              <input name="restaurantName" value={form.restaurantName} onChange={handleChange} placeholder="Your restaurant name"
-                style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
+              <input name="restaurantName" value={form.restaurantName} onChange={handleChange} placeholder="Your restaurant name" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
             </div>
             <div>
               <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Restaurant Address</label>
-              <input name="restaurantAddress" value={form.restaurantAddress} onChange={handleChange} placeholder="Your pickup address"
-                style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
+              <input name="restaurantAddress" value={form.restaurantAddress} onChange={handleChange} placeholder="Your pickup address" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
             </div>
             <div style={{borderTop:"1px solid #DDD5C8",paddingTop:4}}/>
           </>}
-          {[
-            {label:"Customer Name *",name:"customerName",placeholder:"Jane Smith",type:"text"},
-            {label:"Customer Phone *",name:"customerPhone",placeholder:"(860) 555-0000",type:"tel"},
-            {label:"Drop-off Address *",name:"dropoffAddress",placeholder:"123 Main St, North Canaan, CT",type:"text"},
-          ].map(f=>(
+          {[{label:"Customer Name *",name:"customerName",placeholder:"Jane Smith",type:"text"},{label:"Customer Phone *",name:"customerPhone",placeholder:"(860) 555-0000",type:"tel"},{label:"Drop-off Address *",name:"dropoffAddress",placeholder:"123 Main St, North Canaan, CT",type:"text"}].map(f=>(
             <div key={f.name}>
               <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>{f.label}</label>
-              <input name={f.name} value={form[f.name]} onChange={handleChange} placeholder={f.placeholder} type={f.type}
-                style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
+              <input name={f.name} value={form[f.name]} onChange={handleChange} placeholder={f.placeholder} type={f.type} style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
             </div>
           ))}
           <div>
             <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Order Details</label>
-            <textarea name="orderDetails" value={form.orderDetails} onChange={handleChange} placeholder="2x Margherita, 1x Caesar salad..." rows={3}
-              style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
+            <textarea name="orderDetails" value={form.orderDetails} onChange={handleChange} placeholder="2x Margherita, 1x Caesar salad..." rows={3} style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
           </div>
           <div>
             <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Notes</label>
-            <input name="notes" value={form.notes} onChange={handleChange} placeholder="Leave at door, call on arrival..."
-              style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
+            <input name="notes" value={form.notes} onChange={handleChange} placeholder="Leave at door, call on arrival..." style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
           </div>
           <div style={{borderTop:"1px solid #DDD5C8",paddingTop:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span style={{fontSize:12,color:muted}}>Pickup: <strong>{form.restaurantName || restaurant.name || "Your Restaurant"}</strong></span>
-            <button onClick={submit} disabled={loading||!form.customerName||!form.customerPhone||!form.dropoffAddress||(isGeneral&&!form.restaurantName)}
-              style={{background:loading||!form.customerName||!form.customerPhone||!form.dropoffAddress?"#ccc":rust,color:"white",border:"none",padding:"11px 22px",fontSize:13,borderRadius:6,cursor:"pointer",fontWeight:600}}>
-              {loading ? "Sending..." : "Request Delivery →"}
-            </button>
+            <button onClick={submit} disabled={loading||!available||!form.customerName||!form.customerPhone||!form.dropoffAddress||(isGeneral&&!form.restaurantName)} style={{background:(loading||!available||!form.customerName||!form.customerPhone||!form.dropoffAddress)?"#ccc":rust,color:"white",border:"none",padding:"11px 22px",fontSize:13,borderRadius:6,cursor:"pointer",fontWeight:600}}>{!available ? "Offline" : loading ? "Sending..." : "Request Delivery →"}</button>
           </div>
         </div>
-
-        {/* Recent Orders Section */}
         <div style={{marginTop:32}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
             <h2 style={{fontSize:18,fontWeight:700}}>Recent Orders</h2>
-            <button onClick={()=>{ setShowOrders(true); loadRecentOrders(); }} style={{background:"none",border:"1px solid #DDD5C8",padding:"6px 14px",borderRadius:4,fontSize:12,cursor:"pointer",color:muted}}>
-              ↻ Refresh
-            </button>
+            <button onClick={()=>{ setShowOrders(true); loadRecentOrders(); }} style={{background:"none",border:"1px solid #DDD5C8",padding:"6px 14px",borderRadius:4,fontSize:12,cursor:"pointer",color:muted}}>↻ Refresh</button>
           </div>
-          {!showOrders && (
-            <div style={{textAlign:"center",padding:"24px 0",color:muted,fontSize:13}}>
-              <button onClick={()=>{ setShowOrders(true); loadRecentOrders(); }} style={{background:ink,color:"white",border:"none",padding:"10px 20px",borderRadius:6,cursor:"pointer",fontSize:13}}>
-                View My Orders
-              </button>
-            </div>
-          )}
-          {showOrders && recentOrders.length === 0 && (
-            <div style={{textAlign:"center",padding:"24px 0",color:muted,fontSize:13}}>No orders yet</div>
-          )}
+          {!showOrders && (<div style={{textAlign:"center",padding:"24px 0",color:muted,fontSize:13}}><button onClick={()=>{ setShowOrders(true); loadRecentOrders(); }} style={{background:ink,color:"white",border:"none",padding:"10px 20px",borderRadius:6,cursor:"pointer",fontSize:13}}>View My Orders</button></div>)}
+          {showOrders && recentOrders.length === 0 && (<div style={{textAlign:"center",padding:"24px 0",color:muted,fontSize:13}}>No orders yet</div>)}
           {showOrders && recentOrders.map(order => {
             const sc = statusColors[order.status] || statusColors.pending;
             return (
@@ -976,50 +834,30 @@ function RestaurantPortal({ restaurant, slug }) {
                   <div style={{flex:1}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                       <strong style={{fontSize:14}}>{order.customer_name}</strong>
-                      <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,background:sc.bg,color:sc.text}}>
-                        <span style={{width:6,height:6,borderRadius:"50%",background:sc.dot,display:"inline-block"}}/>
-                        {statusLabel[order.status] || order.status}
-                      </span>
+                      <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,background:sc.bg,color:sc.text}}><span style={{width:6,height:6,borderRadius:"50%",background:sc.dot,display:"inline-block"}}/>{statusLabel[order.status] || order.status}</span>
                     </div>
                     <div style={{fontSize:12,color:muted}}>📍 {order.dropoff_address}</div>
                     {order.order_details && <div style={{fontSize:12,color:muted}}>🧾 {order.order_details}</div>}
                   </div>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:11,color:muted}}>{timeAgo(order.created_at)}</div>
-                  </div>
+                  <div style={{textAlign:"right"}}><div style={{fontSize:11,color:muted}}>{timeAgo(order.created_at)}</div></div>
                 </div>
                 {(order.status === "delivered" || order.status === "cancelled" || order.status === "paid") && (
-                  <button onClick={async()=>{
-                    if(confirm("Remove this order from your list?")) {
-                      try { await sb.deleteOrder(order.id); loadRecentOrders(); } catch(e){ alert("Failed to delete."); }
-                    }
-                  }} style={{marginTop:8,width:"100%",background:"none",color:"#DC3545",border:"1px solid #DC3545",padding:"6px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>
-                    🗑 Remove Order
-                  </button>
+                  <button onClick={async()=>{ if(confirm("Remove this order from your list?")) { try { await sb.deleteOrder(order.id); loadRecentOrders(); } catch(e){ alert("Failed to delete."); } } }} style={{marginTop:8,width:"100%",background:"none",color:"#DC3545",border:"1px solid #DC3545",padding:"6px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>🗑 Remove Order</button>
                 )}
-                {(order.status === "pending" || order.status === "active") && (
-                  <button onClick={async()=>{
-                    try { await sb.updateOrder(order.id,{status:"ready_for_pickup"}); loadRecentOrders(); } catch(e){}
-                  }} style={{marginTop:10,background:"#FF6B1A",color:"white",border:"none",padding:"8px 16px",fontSize:12,borderRadius:4,cursor:"pointer",fontWeight:600,width:"100%"}}>
-                    🍔 Order is Ready for Pickup
-                  </button>
+                {order.status === "pending" && (
+                  <div style={{marginTop:10,padding:"8px",background:"#FFF3CD",borderRadius:4,textAlign:"center",fontSize:12,color:"#856404",fontWeight:600}}>⏳ Waiting for driver to accept</div>
+                )}
+                {order.status === "active" && (
+                  <button onClick={async()=>{ try { await sb.updateOrder(order.id,{status:"ready_for_pickup"}); loadRecentOrders(); } catch(e){} }} style={{marginTop:10,background:"#FF6B1A",color:"white",border:"none",padding:"8px 16px",fontSize:12,borderRadius:4,cursor:"pointer",fontWeight:600,width:"100%"}}>🍔 Order is Ready for Pickup</button>
                 )}
                 {order.status !== "cancelled" && (
                   <div style={{marginTop:8}}>
                     <p style={{fontSize:11,color:muted,marginBottom:8,textTransform:"uppercase",letterSpacing:".05em"}}>💝 Tip your driver</p>
                     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
-                      {[1,2,3,5].map(t=>(
-                        <button key={t} onClick={()=>tipWithMethod(t)}
-                          style={{flex:1,padding:"7px 4px",border:"none",background:"#635BFF",color:"white",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>
-                          ${t}
-                        </button>
-                      ))}
+                      {[1,2,3,5].map(t=>(<button key={t} onClick={()=>tipWithMethod(t)} style={{flex:1,padding:"7px 4px",border:"none",background:"#635BFF",color:"white",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>${t}</button>))}
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <button onClick={()=>window.open(STRIPE_DELIVERY, "_blank")}
-                        style={{width:"100%",padding:"7px",border:"1px solid #635BFF",background:"white",color:"#635BFF",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>
-                        💳 Custom amount — tap to enter
-                      </button>
+                      <button onClick={()=>window.open(STRIPE_DELIVERY, "_blank")} style={{width:"100%",padding:"7px",border:"1px solid #635BFF",background:"white",color:"#635BFF",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>💳 Custom amount — tap to enter</button>
                     </div>
                   </div>
                 )}
@@ -1032,73 +870,44 @@ function RestaurantPortal({ restaurant, slug }) {
   );
 }
 
-// ── Customer Request Portal ───────────────────────────────────
 function CustomerRequest({ navigate }) {
-  const [form, setForm] = useState({
-    customerName: "", customerPhone: "", pickupName: "", pickupAddress: "",
-    dropoffAddress: "", orderDetails: "", notes: ""
-  });
+  const [form, setForm] = useState({ customerName:"", customerPhone:"", pickupName:"", pickupAddress:"", dropoffAddress:"", orderDetails:"", notes:"" });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [orderId, setOrderId] = useState(null);
-
+  const [available, setAvailable] = useState(true);
+  useEffect(() => { sb.getAvailability().then(setAvailable).catch(()=>setAvailable(true)); }, []);
   const handleChange = e => setForm(prev => ({...prev, [e.target.name]: e.target.value}));
-
   const submit = async () => {
     if (!form.customerName || !form.customerPhone || !form.pickupAddress || !form.dropoffAddress) return;
     setLoading(true);
     try {
-      const order = {
-        restaurant_name: form.pickupName || "Customer Request",
-        restaurant_address: form.pickupAddress,
-        customer_name: form.customerName,
-        customer_phone: form.customerPhone,
-        dropoff_address: form.dropoffAddress,
-        order_details: form.orderDetails,
-        notes: form.notes,
-        delivery_fee: 8.00,
-        status: "pending",
-        created_at: new Date().toISOString()
-      };
+      const order = { restaurant_name: form.pickupName || "Customer Request", restaurant_address: form.pickupAddress, customer_name: form.customerName, customer_phone: form.customerPhone, dropoff_address: form.dropoffAddress, order_details: form.orderDetails, notes: form.notes, delivery_fee: 8.00, status: "pending", created_at: new Date().toISOString() };
       const [created] = await sb.createOrder(order);
       setOrderId(created.id);
+      sendSMS("+19296908573","🚗 New customer request!\nFrom: "+(form.pickupName||form.pickupAddress)+"\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+form.dropoffAddress);
       setSubmitted(true);
     } catch(e) { alert("Error submitting. Please try again."); }
     finally { setLoading(false); }
   };
-
   if (submitted) return (
     <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
       <div style={{textAlign:"center",maxWidth:400}}>
         <div style={{fontSize:56,marginBottom:12}}>✓</div>
         <h2 style={{fontSize:24,fontWeight:900,color:ink,marginBottom:8}}>Request Sent!</h2>
         <p style={{color:muted,fontSize:14,marginBottom:4}}>Your driver has been notified and will confirm shortly.</p>
-        {orderId && (
-          <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:16,marginTop:16,marginBottom:24}}>
-            <p style={{fontSize:12,color:muted,marginBottom:4}}>Your Order ID</p>
-            <p style={{fontSize:20,fontWeight:900,color:rust}}>{orderId.slice(0,8).toUpperCase()}</p>
-            <p style={{fontSize:12,color:muted,marginTop:4}}>Save this to track your delivery</p>
-          </div>
-        )}
-        <button onClick={()=>navigate("track/"+orderId.slice(0,8).toUpperCase())} style={{width:"100%",background:ink,color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15,marginBottom:10}}>
-          📍 Track My Order
-        </button>
-        <button onClick={()=>{setSubmitted(false);setForm({customerName:"",customerPhone:"",pickupName:"",pickupAddress:"",dropoffAddress:"",orderDetails:"",notes:""});}} style={{width:"100%",background:"none",color:muted,border:"1px solid #DDD5C8",padding:"12px",borderRadius:6,cursor:"pointer",fontSize:13}}>
-          New Request
-        </button>
+        {orderId && (<div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:16,marginTop:16,marginBottom:24}}><p style={{fontSize:12,color:muted,marginBottom:4}}>Your Order ID</p><p style={{fontSize:20,fontWeight:900,color:rust}}>{orderId.slice(0,8).toUpperCase()}</p><p style={{fontSize:12,color:muted,marginTop:4}}>Save this to track your delivery</p></div>)}
+        <button onClick={()=>navigate("track/"+orderId.slice(0,8).toUpperCase())} style={{width:"100%",background:ink,color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15,marginBottom:10}}>📍 Track My Order</button>
+        <button onClick={()=>{setSubmitted(false);setForm({customerName:"",customerPhone:"",pickupName:"",pickupAddress:"",dropoffAddress:"",orderDetails:"",notes:""});}} style={{width:"100%",background:"none",color:muted,border:"1px solid #DDD5C8",padding:"12px",borderRadius:6,cursor:"pointer",fontSize:13}}>New Request</button>
       </div>
     </div>
   );
-
   return (
     <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",color:ink}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0} input,textarea{font-family:inherit}`}</style>
       <header style={{background:"white",borderBottom:"1px solid #DDD5C8",padding:"14px 20px"}}>
         <div style={{maxWidth:520,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div>
-            <span style={{fontWeight:900,color:rust,fontSize:18}}>DELIVER</span>
-            <span style={{fontWeight:700,color:ink,fontSize:18}}>me</span>
-          </div>
+          <div><span style={{fontWeight:900,color:rust,fontSize:18}}>DELIVER</span><span style={{fontWeight:700,color:ink,fontSize:18}}>me</span></div>
           <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>← Home</button>
         </div>
       </header>
@@ -1107,74 +916,41 @@ function CustomerRequest({ navigate }) {
           <h1 style={{fontSize:26,fontWeight:900}}>Request a Delivery</h1>
           <p style={{color:muted,fontSize:13,marginTop:6}}>Already ordered? We'll pick it up and bring it to you. $8 flat delivery fee.</p>
         </div>
-
+        {!available && (
+          <div style={{background:"#F8D7DA",border:"1px solid #DC3545",borderRadius:8,padding:16,marginBottom:16,textAlign:"center"}}>
+            <p style={{fontWeight:700,color:"#721C24"}}>🔴 DELIVERme is currently offline</p>
+            <p style={{fontSize:13,color:"#721C24",marginTop:4}}>We're not accepting new requests right now. Please check back soon!</p>
+          </div>
+        )}
         <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20,display:"flex",flexDirection:"column",gap:16}}>
-          
           <div style={{borderBottom:"1px solid #DDD5C8",paddingBottom:16}}>
             <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>Your Info</p>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <div>
-                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Your Name *</label>
-                <input name="customerName" value={form.customerName} onChange={handleChange} placeholder="Jane Smith"
-                  style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
-              </div>
-              <div>
-                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Your Phone *</label>
-                <input name="customerPhone" value={form.customerPhone} onChange={handleChange} placeholder="(860) 555-0000" type="tel"
-                  style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
-              </div>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Your Name *</label><input name="customerName" value={form.customerName} onChange={handleChange} placeholder="Jane Smith" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Your Phone *</label><input name="customerPhone" value={form.customerPhone} onChange={handleChange} placeholder="(860) 555-0000" type="tel" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
             </div>
           </div>
-
           <div style={{borderBottom:"1px solid #DDD5C8",paddingBottom:16}}>
             <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>Pickup Location</p>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <div>
-                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Place Name</label>
-                <input name="pickupName" value={form.pickupName} onChange={handleChange} placeholder="McDonald's, CVS, Stateline Pizza..."
-                  style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
-              </div>
-              <div>
-                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Pickup Address *</label>
-                <input name="pickupAddress" value={form.pickupAddress} onChange={handleChange} placeholder="123 Main St, Canaan, CT"
-                  style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
-              </div>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Place Name</label><input name="pickupName" value={form.pickupName} onChange={handleChange} placeholder="McDonald's, CVS, Stateline Pizza..." style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Pickup Address *</label><input name="pickupAddress" value={form.pickupAddress} onChange={handleChange} placeholder="123 Main St, Canaan, CT" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
             </div>
           </div>
-
           <div>
             <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>Delivery Details</p>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <div>
-                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Drop-off Address *</label>
-                <input name="dropoffAddress" value={form.dropoffAddress} onChange={handleChange} placeholder="Your home address"
-                  style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
-              </div>
-              <div>
-                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>What did you order?</label>
-                <textarea name="orderDetails" value={form.orderDetails} onChange={handleChange} placeholder="Big Mac combo, large fries..." rows={3}
-                  style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
-              </div>
-              <div>
-                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Notes</label>
-                <input name="notes" value={form.notes} onChange={handleChange} placeholder="Leave at door, call on arrival..."
-                  style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
-              </div>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Drop-off Address *</label><input name="dropoffAddress" value={form.dropoffAddress} onChange={handleChange} placeholder="Your home address" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>What did you order?</label><textarea name="orderDetails" value={form.orderDetails} onChange={handleChange} placeholder="Big Mac combo, large fries..." rows={3} style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none",resize:"vertical",fontFamily:"inherit"}}/></div>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Notes</label><input name="notes" value={form.notes} onChange={handleChange} placeholder="Leave at door, call on arrival..." style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
             </div>
           </div>
-
           <div style={{borderTop:"1px solid #DDD5C8",paddingTop:16}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div>
-                <p style={{fontWeight:700,fontSize:15}}>Delivery Fee</p>
-                <p style={{fontSize:12,color:muted}}>Pay at drop-off or by card</p>
-              </div>
+              <div><p style={{fontWeight:700,fontSize:15}}>Delivery Fee</p><p style={{fontSize:12,color:muted}}>Pay at drop-off or by card</p></div>
               <p style={{fontSize:22,fontWeight:900,color:rust}}>$8.00</p>
             </div>
-            <button onClick={submit} disabled={loading||!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress}
-              style={{width:"100%",background:(!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>
-              {loading ? "Sending..." : "Request Delivery 🚗"}
-            </button>
+            <button onClick={submit} disabled={loading||!available||!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress} style={{width:"100%",background:(!available||!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>{!available ? "Currently Offline" : loading ? "Sending..." : "Request Delivery 🚗"}</button>
           </div>
         </div>
       </main>
@@ -1182,58 +958,35 @@ function CustomerRequest({ navigate }) {
   );
 }
 
-// ── Tracking Page ─────────────────────────────────────────────
 function TrackingPage({ navigate, initialOrderId }) {
   const [orderId, setOrderId] = useState(initialOrderId || "");
   const [tracked, setTracked] = useState(null);
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
-  const [tip, setTip] = useState(0);
-  const [customTip, setCustomTip] = useState("");
   const [paid, setPaid] = useState(false);
   const [cashSelected, setCashSelected] = useState(false);
-
   const DELIVERY_FEE = 8;
-  const tipOptions = [1, 2, 3, 5];
-
   const track = async (id) => {
     const searchId = (id || orderId).trim();
     if (!searchId) return;
     setLoading(true); setNotFound(false); setTracked(null);
     try {
       const all = await sb.getOrders();
-      const found = all.find(o => 
-        o.id === searchId || 
-        o.id.slice(0,8).toUpperCase() === searchId.toUpperCase()
-      ) || null;
+      const found = all.find(o => o.id === searchId || o.id.slice(0,8).toUpperCase() === searchId.toUpperCase()) || null;
       found ? setTracked(found) : setNotFound(true);
     } catch { setNotFound(true); }
     finally { setLoading(false); }
   };
-
-  useEffect(() => {
-    if (initialOrderId) track(initialOrderId);
-  }, []);
-
-  const totalTip = customTip ? parseFloat(customTip) || 0 : tip;
-  const total = DELIVERY_FEE + totalTip;
-
-  const payWithStripe = () => window.open(`https://buy.stripe.com/3cI5kC81Z4IDeEe4Vgd3i00?client_reference_id=${tracked.id.slice(0,8)}&locale=auto`, "_blank");
-  const payVenmo = () => window.open(`https://venmo.com/Delivermeapp?txn=pay&amount=${total}&note=${encodeURIComponent("DELIVERme delivery fee")}`, "_blank");
-  const payCashApp = () => window.open(`https://cash.app/$Delivermeapp/${total}`, "_blank");
-
+  useEffect(() => { if (initialOrderId) track(initialOrderId); }, []);
+  const payWithStripe = () => window.open("https://buy.stripe.com/3cI5kC81Z4IDeEe4Vgd3i00?client_reference_id="+tracked.id.slice(0,8)+"&locale=auto", "_blank");
   const steps = ["Order Received","Driver Accepted","Picked Up","On The Way","Delivered"];
   const stepIndex = !tracked ? 0 : tracked.status==="pending" ? 1 : tracked.status==="active" || tracked.status==="ready_for_pickup" ? 2 : tracked.status==="picked_up" ? 4 : tracked.status==="delivered" ? 5 : 0;
-
   return (
     <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",color:ink}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}`}</style>
       <header style={{background:"white",borderBottom:"1px solid #DDD5C8",padding:"14px 20px"}}>
         <div style={{maxWidth:480,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div>
-            <span style={{fontWeight:900,color:rust,fontSize:16}}>DELIVER</span>
-            <span style={{fontWeight:700,color:ink,fontSize:16}}>me</span>
-          </div>
+          <div><span style={{fontWeight:900,color:rust,fontSize:16}}>DELIVER</span><span style={{fontWeight:700,color:ink,fontSize:16}}>me</span></div>
           <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>← Home</button>
         </div>
       </header>
@@ -1242,15 +995,10 @@ function TrackingPage({ navigate, initialOrderId }) {
         <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20,marginBottom:16}}>
           <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:6}}>Order ID</label>
           <div style={{display:"flex",gap:10}}>
-            <input value={orderId} onChange={e=>setOrderId(e.target.value)} onKeyDown={e=>e.key==="Enter"&&track()} placeholder="Enter your order ID"
-              style={{flex:1,padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
-            <button onClick={()=>track()} disabled={loading||!orderId}
-              style={{background:rust,color:"white",border:"none",padding:"10px 18px",borderRadius:4,cursor:"pointer",fontWeight:600,fontSize:13}}>
-              {loading ? "..." : "Track"}
-            </button>
+            <input value={orderId} onChange={e=>setOrderId(e.target.value)} onKeyDown={e=>e.key==="Enter"&&track()} placeholder="Enter your order ID" style={{flex:1,padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+            <button onClick={()=>track()} disabled={loading||!orderId} style={{background:rust,color:"white",border:"none",padding:"10px 18px",borderRadius:4,cursor:"pointer",fontWeight:600,fontSize:13}}>{loading ? "..." : "Track"}</button>
           </div>
         </div>
-
         {tracked && (
           <>
             <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20,marginBottom:16}}>
@@ -1270,15 +1018,11 @@ function TrackingPage({ navigate, initialOrderId }) {
                       </div>
                       {i<steps.length-1 && <div style={{width:2,height:28,background:done?rust:"#DDD5C8"}}/>}
                     </div>
-                    <div style={{paddingBottom:i<steps.length-1?20:0}}>
-                      <div style={{fontSize:13,fontWeight:active?700:400,color:done||active?ink:muted}}>{step}</div>
-                    </div>
+                    <div style={{paddingBottom:i<steps.length-1?20:0}}><div style={{fontSize:13,fontWeight:active?700:400,color:done||active?ink:muted}}>{step}</div></div>
                   </div>
                 );
               })}
             </div>
-
-            {/* Payment Section */}
             {!paid ? (
               <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20}}>
                 <h3 style={{fontSize:16,fontWeight:700,marginBottom:16}}>💳 Pay Delivery Fee</h3>
@@ -1286,46 +1030,25 @@ function TrackingPage({ navigate, initialOrderId }) {
                   <span style={{fontSize:14,color:muted}}>Delivery fee</span>
                   <span style={{fontSize:14,fontWeight:600}}>${DELIVERY_FEE.toFixed(2)}</span>
                 </div>
-
-                <div style={{marginBottom:12,marginTop:12}}>
-                  <p style={{fontSize:12,color:muted,marginBottom:8,letterSpacing:".05em",textTransform:"uppercase"}}>Add a tip</p>
-                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                    {tipOptions.map(t=>(
-                      <button key={t} onClick={()=>{setTip(tip===t?0:t);setCustomTip("");}}
-                        style={{padding:"8px 14px",border:"1px solid "+(tip===t?rust:"#DDD5C8"),background:tip===t?rust:"white",color:tip===t?"white":ink,borderRadius:4,cursor:"pointer",fontSize:13,fontWeight:600}}>
-                        ${t}
-                      </button>
-                    ))}
-                    <input value={customTip} onChange={e=>{setCustomTip(e.target.value);setTip(0);}} placeholder="Custom"
-                      style={{width:80,padding:"8px 10px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:13,background:cream,outline:"none",textAlign:"center"}}/>
-                  </div>
-                </div>
-
-                <div style={{borderTop:"1px solid #DDD5C8",paddingTop:12,marginBottom:16}}>
+                <div style={{borderTop:"1px solid #DDD5C8",paddingTop:12,marginBottom:16,marginTop:12}}>
                   <div style={{display:"flex",justifyContent:"space-between"}}>
                     <span style={{fontWeight:700,fontSize:15}}>Total</span>
-                    <span style={{fontWeight:900,fontSize:18,color:rust}}>${total.toFixed(2)}</span>
+                    <span style={{fontWeight:900,fontSize:18,color:rust}}>${DELIVERY_FEE.toFixed(2)}</span>
                   </div>
+                  <p style={{fontSize:11,color:muted,marginTop:6}}>Want to tip? You can add a tip on the card screen, or hand it to your driver directly.</p>
                 </div>
-
                 <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  <button onClick={payWithStripe} style={{background:"#635BFF",color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>
-                    💳 Pay by Card / Apple Pay — ${total.toFixed(2)}
-                  </button>
-                  <button onClick={()=>setCashSelected(true)} style={{background:"white",color:ink,border:"2px solid "+ink,padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>
-                    💵 Pay Cash on Delivery
-                  </button>
+                  <button onClick={payWithStripe} style={{background:"#635BFF",color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>💳 Pay by Card / Apple Pay — ${DELIVERY_FEE.toFixed(2)}</button>
+                  <button onClick={()=>setCashSelected(true)} style={{background:"white",color:ink,border:"2px solid "+ink,padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>💵 Pay Cash on Delivery</button>
                   {cashSelected && (
                     <div style={{background:"#FFF3CD",border:"1px solid #FFC107",borderRadius:6,padding:12,textAlign:"center"}}>
                       <p style={{fontWeight:700,color:"#856404"}}>💵 Cash selected</p>
-                      <p style={{fontSize:13,color:"#856404",marginTop:4}}>Please have <strong>${total.toFixed(2)}</strong> ready for the driver at drop-off.</p>
+                      <p style={{fontSize:13,color:"#856404",marginTop:4}}>Please have <strong>${DELIVERY_FEE.toFixed(2)}</strong> ready for the driver at drop-off.</p>
                     </div>
                   )}
                   <div style={{borderTop:"1px solid #DDD5C8",paddingTop:10,marginTop:4}}>
                     <p style={{fontSize:12,color:muted,textAlign:"center",marginBottom:8}}>After completing your card payment tap below</p>
-                    <button onClick={()=>setPaid(true)} style={{width:"100%",background:"#27AE60",color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>
-                      ✓ I've Completed My Payment
-                    </button>
+                    <button onClick={()=>setPaid(true)} style={{width:"100%",background:"#27AE60",color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>✓ I've Completed My Payment</button>
                   </div>
                   <p style={{fontSize:11,color:muted,textAlign:"center"}}>Card accepts Apple Pay & Google Pay</p>
                 </div>
