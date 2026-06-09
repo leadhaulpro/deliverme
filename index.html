@@ -500,7 +500,7 @@ function Dashboard({ navigate }) {
                       {order.status==="ready_for_pickup" && <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11,background:"#FF6B1A"}} onClick={()=>updateStatus(order.id,"picked_up")}>Picked Up ✓</button>}
                       {order.status==="active" && <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11,background:"#9B59B6"}} onClick={()=>updateStatus(order.id,"picked_up")}>Picked Up</button>}
                       {order.status==="picked_up" && <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11}} onClick={()=>updateStatus(order.id,"delivered")}>Mark Delivered</button>}
-                      {order.status==="delivered" && <button className="btn btn-outline" style={{padding:"7px 14px",fontSize:11,borderColor:"#27AE60",color:"#27AE60"}} onClick={()=>{updateStatus(order.id,"paid"); setRatingOrder(order);}}>💰 Mark Paid</button>}
+                      {order.status==="delivered" && <button className="btn btn-outline" style={{padding:"7px 14px",fontSize:11,borderColor:"#27AE60",color:"#27AE60"}} onClick={()=>{updateStatus(order.id,"paid"); if(order.restaurant_slug) setRatingOrder(order);}}>💰 Mark Paid</button>}
                       {order.status==="paid" && <span style={{fontSize:11,color:"#27AE60",fontWeight:700}}>💰 Paid ✓</span>}
                       {(order.status==="paid"||order.status==="cancelled") && (
                         <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11,borderColor:"#DC3545",color:"#DC3545"}} onClick={async()=>{ if(confirm("Delete this order?")) { try { await sb.deleteOrder(order.id); setOrders(prev=>prev.filter(o=>o.id!==order.id)); } catch(e){ alert("Failed to delete."); } } }}>🗑 Delete</button>
