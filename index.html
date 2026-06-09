@@ -408,10 +408,10 @@ function Dashboard({ navigate }) {
           <span style={{fontWeight:700,color:ink,fontSize:18}}>me</span>
           <span style={{fontSize:11,color:muted,marginLeft:8,textTransform:"uppercase",letterSpacing:".08em"}}>Dashboard</span>
         </div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <button onClick={toggleAvailable} style={{padding:"6px 12px",fontSize:11,border:"none",background:available?"#27AE60":"#DC3545",color:"white",borderRadius:4,cursor:"pointer",fontWeight:700}}>{available ? "🟢 Available" : "🔴 Offline"}</button>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+          <button onClick={toggleAvailable} style={{padding:"6px 10px",fontSize:11,border:"none",background:available?"#27AE60":"#DC3545",color:"white",borderRadius:4,cursor:"pointer",fontWeight:700}}>{available ? "🟢 On" : "🔴 Off"}</button>
           {!audioUnlocked ? (
-            <button className="btn btn-red" style={{padding:"6px 12px",fontSize:11}} onClick={()=>{ unlockAudio(); playChime(); setAudioUnlocked(true); }}>🔔 Enable Sound</button>
+            <button className="btn btn-red" style={{padding:"6px 10px",fontSize:11}} onClick={()=>{ unlockAudio(); playChime(); setAudioUnlocked(true); }}>🔔 On</button>
           ) : (
             <button className="btn btn-outline" style={{padding:"6px 12px",fontSize:11,borderColor:"#27AE60",color:"#27AE60"}} onClick={()=>{playChime();}}>🔔 ✓</button>
           )}
