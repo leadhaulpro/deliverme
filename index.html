@@ -624,7 +624,7 @@ function EarningsPanel() {
 
 // ── QR Code Panel ─────────────────────────────────────────────
 function QRPanel() {
-  const baseUrl = "https://deliverme-app.com";
+  const baseUrl = window.location.origin;
   const qrCodes = [
     { label: "Customer Request", url: baseUrl+"/#request", desc: "Customers scan to request a delivery" },
     { label: "Track Order", url: baseUrl+"/#track", desc: "Customers scan to track their order" },
