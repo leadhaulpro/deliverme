@@ -82,6 +82,29 @@ const sb = {
     if (!res.ok) throw new Error("Failed");
     return res.json();
   },
+  async getPickupLocations() {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/pickup_locations?order=name.asc", {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
+    });
+    if (!res.ok) return [];
+    return res.json();
+  },
+  async createPickupLocation(loc) {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/pickup_locations", {
+      method: "POST",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY, "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify(loc)
+    });
+    if (!res.ok) throw new Error("Failed");
+    return res.json();
+  },
+  async deletePickupLocation(id) {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/pickup_locations?id=eq."+id, {
+      method: "DELETE",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
+    });
+    if (!res.ok) throw new Error("Failed to delete");
+  },
   async getAvailability() {
     const res = await fetch(SUPABASE_URL+"/rest/v1/app_settings?id=eq.1", {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
@@ -425,6 +448,7 @@ function Dashboard({ navigate }) {
           <button onClick={()=>setTab("restaurants")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="restaurants"?ink:border),background:tab==="restaurants"?ink:"transparent",color:tab==="restaurants"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>🏪 Restaurants</button>
           <button onClick={()=>setTab("ratings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="ratings"?ink:border),background:tab==="ratings"?ink:"transparent",color:tab==="ratings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>⭐ Ratings</button>
           <button onClick={()=>setTab("qr")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="qr"?ink:border),background:tab==="qr"?ink:"transparent",color:tab==="qr"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>📲 QR Code</button>
+          <button onClick={()=>setTab("pickups")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="pickups"?ink:border),background:tab==="pickups"?ink:"transparent",color:tab==="pickups"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>📍 Pickup Spots</button>
           <button onClick={()=>setTab("earnings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="earnings"?ink:border),background:tab==="earnings"?ink:"transparent",color:tab==="earnings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>💵 Earnings</button>
         </div>
 
@@ -524,6 +548,7 @@ function Dashboard({ navigate }) {
 
         {tab==="ratings" && <RatingsPanel/>}
         {tab==="qr" && <QRPanel/>}
+        {tab==="pickups" && <PickupSpotsPanel/>}
         {tab==="earnings" && <EarningsPanel/>}
       </main>
 
@@ -541,6 +566,79 @@ function Dashboard({ navigate }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PickupSpotsPanel() {
+  const [locations, setLocations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    try { const data = await sb.getPickupLocations(); setLocations(data); } catch(e){} finally { setLoading(false); }
+  };
+  useEffect(()=>{ load(); },[]);
+
+  const add = async () => {
+    if (!name.trim() || !address.trim()) return;
+    setSaving(true);
+    try { await sb.createPickupLocation({ name: name.trim(), address: address.trim() }); setName(""); setAddress(""); await load(); }
+    catch(e){ alert("Could not save location."); }
+    finally { setSaving(false); }
+  };
+
+  const remove = async (id) => {
+    if (!confirm("Remove this pickup location?")) return;
+    try { await sb.deletePickupLocation(id); await load(); } catch(e){ alert("Could not delete."); }
+  };
+
+  const seedRestaurants = async () => {
+    if (!confirm("Add your 8 DELIVERme restaurants to the pickup list? (Skips any already added.)")) return;
+    setSaving(true);
+    try {
+      const existing = await sb.getPickupLocations();
+      const existingNames = existing.map(l=>l.name.toLowerCase());
+      const toAdd = Object.entries(RESTAURANTS).filter(([slug])=>slug!=="general").map(([slug,r])=>r).filter(r=>!existingNames.includes(r.name.toLowerCase()));
+      for (const r of toAdd) { await sb.createPickupLocation({ name: r.name, address: r.address }); }
+      await load();
+      alert(toAdd.length>0 ? ("Added "+toAdd.length+" restaurant(s)!") : "All restaurants are already in your list.");
+    } catch(e){ alert("Could not add restaurants."); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fade-in">
+      <div style={{marginBottom:16}}>
+        <h2 style={{fontSize:20,fontWeight:900}}>📍 Pickup Spots</h2>
+        <p style={{fontSize:13,color:muted,marginTop:4}}>Saved pickup locations. These appear as a dropdown on the customer request form so addresses are always complete and correct.</p>
+      </div>
+
+      <div className="card" style={{marginBottom:16}}>
+        <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:10,fontWeight:700}}>Add a Pickup Spot</p>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <input value={name} onChange={e=>setName(e.target.value)} placeholder="Name (e.g. McDonald's, CVS)" style={{width:"100%",padding:"10px 12px",border:"1px solid "+border,borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+          <input value={address} onChange={e=>setAddress(e.target.value)} placeholder="Full address" style={{width:"100%",padding:"10px 12px",border:"1px solid "+border,borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+          <button onClick={add} disabled={saving||!name.trim()||!address.trim()} style={{background:(saving||!name.trim()||!address.trim())?"#ccc":rust,color:"white",border:"none",padding:"11px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:14}}>{saving?"Saving...":"+ Add Location"}</button>
+        </div>
+        <button onClick={seedRestaurants} disabled={saving} style={{marginTop:10,width:"100%",background:"none",color:ink,border:"1px dashed "+border,padding:"10px",borderRadius:6,cursor:"pointer",fontWeight:600,fontSize:12}}>🍴 Quick-add my 8 DELIVERme restaurants</button>
+      </div>
+
+      {loading && <div style={{textAlign:"center",padding:"20px",color:muted}}>Loading...</div>}
+      {!loading && locations.length===0 && <div style={{textAlign:"center",padding:"30px",color:muted,fontSize:13}}>No pickup spots yet. Add your first one above.</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {locations.map(loc=>(
+          <div key={loc.id} className="card" style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700,fontSize:14}}>{loc.name}</div>
+              <div style={{fontSize:12,color:muted,marginTop:2}}>{loc.address}</div>
+            </div>
+            <button onClick={()=>remove(loc.id)} style={{background:"none",color:"#DC3545",border:"1px solid #DC3545",padding:"6px 12px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap"}}>Remove</button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -878,16 +976,19 @@ function CustomerRequest({ navigate }) {
   const [loading, setLoading] = useState(false);
   const [orderId, setOrderId] = useState(null);
   const [available, setAvailable] = useState(true);
+  const [pickupSpots, setPickupSpots] = useState([]);
   useEffect(() => { sb.getAvailability().then(setAvailable).catch(()=>setAvailable(true)); }, []);
+  useEffect(() => { sb.getPickupLocations().then(setPickupSpots).catch(()=>setPickupSpots([])); }, []);
   const handleChange = e => setForm(prev => ({...prev, [e.target.name]: e.target.value}));
   const submit = async () => {
     if (!form.customerName || !form.customerPhone || !form.pickupAddress || !form.dropoffAddress) return;
     setLoading(true);
     try {
-      const order = { restaurant_name: form.pickupName || "Customer Request", restaurant_address: form.pickupAddress, customer_name: form.customerName, customer_phone: form.customerPhone, dropoff_address: form.dropoffAddress, order_details: form.orderDetails, notes: form.notes, delivery_fee: 8.00, status: "pending", created_at: new Date().toISOString() };
+      const pickupDisplayName = form.pickupName==="__other__" ? (form.pickupNameOther||"Customer Request") : (form.pickupName||"Customer Request");
+      const order = { restaurant_name: pickupDisplayName, restaurant_address: form.pickupAddress, customer_name: form.customerName, customer_phone: form.customerPhone, dropoff_address: form.dropoffAddress, order_details: form.orderDetails, notes: form.notes, delivery_fee: 8.00, status: "pending", created_at: new Date().toISOString() };
       const [created] = await sb.createOrder(order);
       setOrderId(created.id);
-      sendSMS("+19296908573","🚗 New customer request!\nFrom: "+(form.pickupName||form.pickupAddress)+"\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+form.dropoffAddress);
+      sendSMS("+19296908573","🚗 New customer request!\nFrom: "+(pickupDisplayName)+"\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+form.dropoffAddress);
       setSubmitted(true);
     } catch(e) { alert("Error submitting. Please try again."); }
     finally { setLoading(false); }
@@ -935,7 +1036,20 @@ function CustomerRequest({ navigate }) {
           <div style={{borderBottom:"1px solid #DDD5C8",paddingBottom:16}}>
             <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>Pickup Location</p>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Place Name</label><input name="pickupName" value={form.pickupName} onChange={handleChange} placeholder="McDonald's, CVS, Stateline Pizza..." style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Pickup Place</label>
+                <select value={form.pickupName} onChange={e=>{
+                  const chosen = e.target.value;
+                  const spot = pickupSpots.find(s=>s.name===chosen);
+                  setForm(prev=>({...prev, pickupName: chosen, pickupAddress: spot ? spot.address : (chosen==="__other__" ? "" : prev.pickupAddress)}));
+                }} style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}>
+                  <option value="">Select a pickup spot...</option>
+                  {pickupSpots.map(s=>(<option key={s.id} value={s.name}>{s.name}</option>))}
+                  <option value="__other__">Other (not listed — I'll type it)</option>
+                </select>
+              </div>
+              {form.pickupName==="__other__" && (
+                <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Place Name</label><input value={form.pickupNameOther||""} onChange={e=>setForm(prev=>({...prev,pickupNameOther:e.target.value}))} placeholder="Name of the place" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
+              )}
               <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Pickup Address *</label><input name="pickupAddress" value={form.pickupAddress} onChange={handleChange} placeholder="123 Main St, Canaan, CT" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
             </div>
           </div>
