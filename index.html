@@ -221,23 +221,153 @@ function App() {
 
 function LandingPage({ navigate }) {
   return (
-    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
-      <style>{`*{box-sizing:border-box;margin:0;padding:0}`}</style>
-      <div style={{textAlign:"center",maxWidth:400}}>
-        <div style={{marginBottom:32}}>
-          <span style={{fontSize:36,fontWeight:900,color:rust}}>DELIVER</span>
-          <span style={{fontSize:36,fontWeight:700,color:ink}}>me</span>
-          <p style={{color:ink,fontSize:15,marginTop:10,fontWeight:700,letterSpacing:".03em"}}>DELIVERY FOR SMALL TOWN LIVING</p>
-          <p style={{color:muted,fontSize:12,marginTop:4,letterSpacing:".05em"}}>Canaan · Litchfield County, CT</p>
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",color:ink}}>
+      <style>{`
+        *{box-sizing:border-box;margin:0;padding:0}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+        .lp-fade{animation:fadeUp .7s ease both}
+        .lp-d1{animation-delay:.1s}.lp-d2{animation-delay:.25s}.lp-d3{animation-delay:.4s}.lp-d4{animation-delay:.55s}
+        .lp-float{animation:floaty 3s ease-in-out infinite}
+        .lp-btn{transition:transform .15s ease, box-shadow .15s ease}
+        .lp-btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.12)}
+        .lp-card{transition:transform .2s ease, box-shadow .2s ease}
+        .lp-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.08)}
+      `}</style>
+
+      {/* Hero */}
+      <section style={{background:"linear-gradient(160deg,#FFFFFF 0%,"+cream+" 100%)",padding:"48px 20px 40px",textAlign:"center",borderBottom:"1px solid "+border}}>
+        <div style={{maxWidth:520,margin:"0 auto"}}>
+          <div className="lp-fade lp-d1" style={{marginBottom:24}}>
+            <span style={{fontSize:42,fontWeight:900,color:rust}}>DELIVER</span>
+            <span style={{fontSize:42,fontWeight:700,color:ink}}>me</span>
+            <p style={{color:ink,fontSize:17,marginTop:12,fontWeight:800,letterSpacing:".02em"}}>DELIVERY FOR SMALL TOWN LIVING</p>
+            <p style={{color:muted,fontSize:13,marginTop:6,letterSpacing:".05em"}}>Canaan · Litchfield County, CT</p>
+          </div>
+          <div className="lp-fade lp-d2" style={{display:"flex",flexDirection:"column",gap:12,maxWidth:360,margin:"0 auto"}}>
+            <button className="lp-btn" onClick={()=>navigate("request")} style={{background:rust,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:8,cursor:"pointer",fontWeight:700}}>🛵 Request a Delivery</button>
+            <button className="lp-btn" onClick={()=>navigate("track")} style={{background:ink,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:8,cursor:"pointer",fontWeight:600}}>📍 Track My Order</button>
+            <div style={{display:"flex",gap:10}}>
+              <button className="lp-btn" onClick={()=>navigate("drive")} style={{flex:1,background:"none",color:rust,border:"1px solid "+rust,padding:"12px",fontSize:13,borderRadius:8,cursor:"pointer",fontWeight:600}}>🚗 Drive With Us</button>
+              <button className="lp-btn" onClick={()=>navigate("dashboard")} style={{flex:1,background:"none",color:muted,border:"1px solid "+border,padding:"12px",fontSize:13,borderRadius:8,cursor:"pointer"}}>Driver Login</button>
+            </div>
+          </div>
         </div>
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <button onClick={()=>navigate("request")} style={{background:rust,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>🛵 Request a Delivery</button>
-          <button onClick={()=>navigate("track")} style={{background:ink,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:600}}>📍 Track My Order</button>
-          <button onClick={()=>navigate("drive")} style={{background:"none",color:rust,border:"1px solid "+rust,padding:"12px 24px",fontSize:13,borderRadius:6,cursor:"pointer",fontWeight:600}}>🚗 Drive With Us</button>
-          <button onClick={()=>navigate("dashboard")} style={{background:"none",color:muted,border:"1px solid "+border,padding:"12px 24px",fontSize:13,borderRadius:6,cursor:"pointer"}}>Driver Login</button>
+      </section>
+
+      {/* Welcome video */}
+      <section style={{padding:"40px 20px",textAlign:"center"}}>
+        <div style={{maxWidth:560,margin:"0 auto"}}>
+          <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,marginBottom:6}}>Welcome to DELIVERme</h2>
+          <p className="lp-fade lp-d1" style={{color:muted,fontSize:14,marginBottom:20}}>See how easy it is to get what you need, delivered.</p>
+          {/* VIDEO PLACEHOLDER — replace the src with your YouTube embed link when ready */}
+          <div className="lp-fade lp-d2" style={{position:"relative",background:ink,borderRadius:12,overflow:"hidden",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <div style={{textAlign:"center",color:"white",padding:20}}>
+              <div className="lp-float" style={{fontSize:44,marginBottom:8}}>🎬</div>
+              <p style={{fontWeight:700,fontSize:15}}>Welcome video coming soon</p>
+              <p style={{fontSize:12,opacity:.7,marginTop:4}}>A quick tour of how DELIVERme works</p>
+            </div>
+          </div>
         </div>
-        <p style={{color:muted,fontSize:12,marginTop:24}}>Restaurant? Ask your DELIVERme driver for your portal link.</p>
-      </div>
+      </section>
+
+      {/* How it works */}
+      <section style={{padding:"20px 20px 40px",background:"white",borderTop:"1px solid "+border,borderBottom:"1px solid "+border}}>
+        <div style={{maxWidth:760,margin:"0 auto"}}>
+          <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,textAlign:"center",marginBottom:8}}>How It Works</h2>
+          <p className="lp-fade lp-d1" style={{color:muted,fontSize:14,textAlign:"center",marginBottom:28}}>Three easy ways to use DELIVERme.</p>
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            <div className="lp-fade lp-d1 lp-card" style={{background:cream,border:"1px solid "+border,borderRadius:10,padding:20}}>
+              <div style={{fontSize:13,fontWeight:800,color:rust,letterSpacing:".08em",textTransform:"uppercase",marginBottom:10}}>🍔 Order from a restaurant</div>
+              <p style={{fontSize:14,color:ink,lineHeight:1.6}}>Your favorite local spot sends us your order, we pick it up, and bring it to your door. Track it the whole way.</p>
+            </div>
+            <div className="lp-fade lp-d2 lp-card" style={{background:cream,border:"1px solid "+border,borderRadius:10,padding:20}}>
+              <div style={{fontSize:13,fontWeight:800,color:rust,letterSpacing:".08em",textTransform:"uppercase",marginBottom:10}}>🛍️ Need something picked up?</div>
+              <p style={{fontSize:14,color:ink,lineHeight:1.6}}>Already ordered somewhere — a restaurant, the pharmacy, a store? Just send us a request with the pickup and drop-off, and we handle the rest.</p>
+            </div>
+            <div className="lp-fade lp-d3 lp-card" style={{background:cream,border:"1px solid "+border,borderRadius:10,padding:20}}>
+              <div style={{fontSize:13,fontWeight:800,color:rust,letterSpacing:".08em",textTransform:"uppercase",marginBottom:10}}>🚗 Want to drive?</div>
+              <p style={{fontSize:14,color:ink,lineHeight:1.6}}>Earn money delivering in your own community, on your own schedule. Apply in minutes.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Why DELIVERme */}
+      <section style={{padding:"40px 20px"}}>
+        <div style={{maxWidth:760,margin:"0 auto"}}>
+          <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,textAlign:"center",marginBottom:28}}>Why DELIVERme</h2>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
+            {[
+              {icon:"🏡",title:"Truly local",text:"We're your neighbors — based right here in Canaan, serving the towns the big apps forget."},
+              {icon:"✅",title:"Reliable coverage",text:"When Uber Eats and DoorDash show no drivers, we show up. That's the whole point."},
+              {icon:"🤝",title:"No restaurant commissions",text:"We don't take a cut from local restaurants like the big platforms do — so they keep more."},
+              {icon:"📍",title:"Anything, anywhere local",text:"Not just food. Pharmacy runs, store pickups, errands — if it's in our area, we can grab it."},
+            ].map((b,i)=>(
+              <div key={b.title} className={"lp-fade lp-card lp-d"+((i%4)+1)} style={{background:"white",border:"1px solid "+border,borderRadius:10,padding:20}}>
+                <div style={{fontSize:30,marginBottom:10}}>{b.icon}</div>
+                <div style={{fontWeight:800,fontSize:15,marginBottom:6}}>{b.title}</div>
+                <p style={{fontSize:13,color:muted,lineHeight:1.6}}>{b.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Service area */}
+      <section style={{padding:"40px 20px",background:"white",borderTop:"1px solid "+border,borderBottom:"1px solid "+border,textAlign:"center"}}>
+        <div style={{maxWidth:620,margin:"0 auto"}}>
+          <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,marginBottom:8}}>Where We Deliver</h2>
+          <p className="lp-fade lp-d1" style={{color:muted,fontSize:14,marginBottom:20}}>Serving Canaan and the surrounding towns:</p>
+          <div className="lp-fade lp-d2" style={{display:"flex",flexWrap:"wrap",gap:10,justifyContent:"center"}}>
+            {["Canaan","North Canaan","Salisbury","Lakeville","Sharon","Falls Village","Cornwall","Norfolk","Great Barrington, MA"].map(t=>(
+              <span key={t} style={{background:cream,border:"1px solid "+border,borderRadius:20,padding:"8px 16px",fontSize:13,fontWeight:600}}>{t}</span>
+            ))}
+          </div>
+          <p className="lp-fade lp-d3" style={{color:muted,fontSize:12,marginTop:18}}>Don't see your town? Send a request anyway — we're always expanding.</p>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section style={{padding:"40px 20px"}}>
+        <div style={{maxWidth:680,margin:"0 auto"}}>
+          <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,textAlign:"center",marginBottom:24}}>Common Questions</h2>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {[
+              {q:"How do I pay?",a:"Pay securely by card or Apple Pay through the app, or with cash on delivery — your choice."},
+              {q:"How long does delivery take?",a:"It depends on distance and the pickup spot, but because we're local, we're often faster than the big apps in our area."},
+              {q:"What can you pick up?",a:"Food from restaurants, plus pharmacy items, store goods, and local errands. If it's in our service area, just ask."},
+              {q:"How do I track my order?",a:"After you place a request, you get an Order ID and a tracking link so you always know where your delivery is."},
+              {q:"Do you charge restaurants commission?",a:"No. Unlike the big platforms, we don't take a percentage from local restaurants."},
+            ].map((f,i)=>(
+              <div key={i} className="lp-fade lp-card" style={{background:"white",border:"1px solid "+border,borderRadius:10,padding:"16px 18px"}}>
+                <div style={{fontWeight:700,fontSize:14,marginBottom:6}}>{f.q}</div>
+                <p style={{fontSize:13,color:muted,lineHeight:1.6}}>{f.a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section style={{padding:"40px 20px 48px",background:"linear-gradient(160deg,"+cream+" 0%,#FFFFFF 100%)",textAlign:"center",borderTop:"1px solid "+border}}>
+        <div style={{maxWidth:420,margin:"0 auto"}}>
+          <h2 className="lp-fade" style={{fontSize:20,fontWeight:900,marginBottom:6}}>Ready when you are</h2>
+          <p className="lp-fade lp-d1" style={{color:muted,fontSize:14,marginBottom:20}}>Get your delivery started in under a minute.</p>
+          <button className="lp-btn lp-fade lp-d2" onClick={()=>navigate("request")} style={{background:rust,color:"white",border:"none",padding:"16px 36px",fontSize:15,borderRadius:8,cursor:"pointer",fontWeight:700}}>🛵 Request a Delivery</button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer style={{background:ink,color:"white",padding:"28px 20px",textAlign:"center"}}>
+        <div style={{maxWidth:520,margin:"0 auto"}}>
+          <div style={{marginBottom:8}}><span style={{fontWeight:900,color:"white",fontSize:18}}>DELIVER</span><span style={{fontWeight:700,color:"#E8B4AE",fontSize:18}}>me</span></div>
+          <p style={{fontSize:12,opacity:.7,marginBottom:8}}>Delivery for small town living · Canaan, CT</p>
+          <p style={{fontSize:12,opacity:.7}}>Questions? <a href="mailto:support@deliverme-app.com" style={{color:"#E8B4AE",textDecoration:"none"}}>support@deliverme-app.com</a></p>
+          <p style={{fontSize:11,opacity:.5,marginTop:12}}>Restaurant? Ask your DELIVERme driver for your portal link.</p>
+        </div>
+      </footer>
     </div>
   );
 }
