@@ -171,17 +171,17 @@ const STRIPE_TIPS = {
 // ── Delivery town pricing tiers ───────────────────────────────
 // Each town has a flat delivery fee based on distance from Canaan (base).
 const DELIVERY_TOWNS = [
-  { town: "Canaan", fee: 8 },
-  { town: "North Canaan", fee: 8 },
-  { town: "East Canaan", fee: 8 },
-  { town: "Falls Village", fee: 8 },
-  { town: "Salisbury", fee: 8 },
-  { town: "Sheffield, MA", fee: 8 },
-  { town: "Lakeville", fee: 10 },
-  { town: "Norfolk", fee: 10 },
-  { town: "Sharon", fee: 12 },
-  { town: "Cornwall", fee: 12 },
-  { town: "Great Barrington, MA", fee: 12 }
+  { town: "Canaan", state: "CT", fee: 8 },
+  { town: "North Canaan", state: "CT", fee: 8 },
+  { town: "East Canaan", state: "CT", fee: 8 },
+  { town: "Falls Village", state: "CT", fee: 8 },
+  { town: "Salisbury", state: "CT", fee: 8 },
+  { town: "Sheffield, MA", state: "MA", fee: 8 },
+  { town: "Lakeville", state: "CT", fee: 10 },
+  { town: "Norfolk", state: "CT", fee: 10 },
+  { town: "Sharon", state: "CT", fee: 12 },
+  { town: "Cornwall", state: "CT", fee: 12 },
+  { town: "Great Barrington, MA", state: "MA", fee: 12 }
 ];
 // Stripe payment link per fee amount (used on the tracking/payment page).
 const STRIPE_FEE_LINKS = {
@@ -1158,7 +1158,9 @@ function CustomerRequest({ navigate }) {
     setLoading(true);
     try {
       const pickupDisplayName = form.pickupName==="__other__" ? (form.pickupNameOther||"Customer Request") : (form.pickupName||"Customer Request");
-      const fullDropoff = form.dropoffAddress + ", " + dropoffTown.town;
+      // Build a full GPS-ready address: "street, Town, ST" (town label may already include state)
+      const townLabel = dropoffTown.town.includes(",") ? dropoffTown.town : (dropoffTown.town + ", " + dropoffTown.state);
+      const fullDropoff = form.dropoffAddress + ", " + townLabel;
       const order = { restaurant_name: pickupDisplayName, restaurant_address: form.pickupAddress, customer_name: form.customerName, customer_phone: form.customerPhone, dropoff_address: fullDropoff, order_details: form.orderDetails, notes: form.notes, delivery_fee: dropoffTown.fee, status: "pending", created_at: new Date().toISOString() };
       const [created] = await sb.createOrder(order);
       setOrderId(created.id);
