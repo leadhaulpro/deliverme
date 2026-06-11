@@ -167,6 +167,29 @@ const STRIPE_TIPS = {
   3: "https://buy.stripe.com/4gMeVc5TR3Ez0NocnId3i03",
   5: "https://buy.stripe.com/7sY5kCaa7ejdfIiafAd3i04"
 };
+
+// ── Delivery town pricing tiers ───────────────────────────────
+// Each town has a flat delivery fee based on distance from Canaan (base).
+const DELIVERY_TOWNS = [
+  { town: "Canaan", fee: 8 },
+  { town: "North Canaan", fee: 8 },
+  { town: "East Canaan", fee: 8 },
+  { town: "Falls Village", fee: 8 },
+  { town: "Salisbury", fee: 8 },
+  { town: "Sheffield, MA", fee: 8 },
+  { town: "Lakeville", fee: 10 },
+  { town: "Norfolk", fee: 10 },
+  { town: "Sharon", fee: 12 },
+  { town: "Cornwall", fee: 12 },
+  { town: "Great Barrington, MA", fee: 12 }
+];
+// Stripe payment link per fee amount (used on the tracking/payment page).
+const STRIPE_FEE_LINKS = {
+  8: "https://buy.stripe.com/3cI5kC81Z4IDeEe4Vgd3i00",
+  10: "https://buy.stripe.com/dRmeVc81Z4ID8fQfzUd3i06",
+  12: "https://buy.stripe.com/28EcN4cif8YT67IcnId3i05"
+};
+const OUT_OF_AREA_MSG = "Thanks for the opportunity to earn your business. We hope to be onboarding in your area soon.";
 let audioCtx = null;
 function unlockAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -335,7 +358,7 @@ function LandingPage({ navigate }) {
           <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,marginBottom:8}}>Where We Deliver</h2>
           <p className="lp-fade lp-d1" style={{color:muted,fontSize:14,marginBottom:20}}>Serving Canaan and the surrounding towns:</p>
           <div className="lp-fade lp-d2" style={{display:"flex",flexWrap:"wrap",gap:10,justifyContent:"center"}}>
-            {["Canaan","North Canaan","Salisbury","Lakeville","Sharon","Falls Village","Cornwall","Norfolk","Great Barrington, MA"].map(t=>(
+            {["Canaan","North Canaan","East Canaan","Falls Village","Salisbury","Sheffield, MA","Lakeville","Norfolk","Sharon","Cornwall","Great Barrington, MA"].map(t=>(
               <span key={t} style={{background:cream,border:"1px solid "+border,borderRadius:20,padding:"8px 16px",fontSize:13,fontWeight:600}}>{t}</span>
             ))}
           </div>
@@ -1117,6 +1140,7 @@ function RestaurantPortal({ restaurant, slug }) {
 
 function CustomerRequest({ navigate }) {
   const [form, setForm] = useState({ customerName:"", customerPhone:"", pickupName:"", pickupAddress:"", dropoffAddress:"", orderDetails:"", notes:"" });
+  const [dropoffTown, setDropoffTown] = useState(null); // selected town object {town,fee} or "__other__"
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [orderId, setOrderId] = useState(null);
@@ -1125,15 +1149,20 @@ function CustomerRequest({ navigate }) {
   useEffect(() => { sb.getAvailability().then(setAvailable).catch(()=>setAvailable(true)); }, []);
   useEffect(() => { sb.getPickupLocations().then(setPickupSpots).catch(()=>setPickupSpots([])); }, []);
   const handleChange = e => setForm(prev => ({...prev, [e.target.name]: e.target.value}));
+  const isOutOfArea = dropoffTown === "__other__";
+  const townSelected = dropoffTown && dropoffTown !== "__other__";
+  const deliveryFee = townSelected ? dropoffTown.fee : 8;
   const submit = async () => {
     if (!form.customerName || !form.customerPhone || !form.pickupAddress || !form.dropoffAddress) return;
+    if (!townSelected) return;
     setLoading(true);
     try {
       const pickupDisplayName = form.pickupName==="__other__" ? (form.pickupNameOther||"Customer Request") : (form.pickupName||"Customer Request");
-      const order = { restaurant_name: pickupDisplayName, restaurant_address: form.pickupAddress, customer_name: form.customerName, customer_phone: form.customerPhone, dropoff_address: form.dropoffAddress, order_details: form.orderDetails, notes: form.notes, delivery_fee: 8.00, status: "pending", created_at: new Date().toISOString() };
+      const fullDropoff = form.dropoffAddress + ", " + dropoffTown.town;
+      const order = { restaurant_name: pickupDisplayName, restaurant_address: form.pickupAddress, customer_name: form.customerName, customer_phone: form.customerPhone, dropoff_address: fullDropoff, order_details: form.orderDetails, notes: form.notes, delivery_fee: dropoffTown.fee, status: "pending", created_at: new Date().toISOString() };
       const [created] = await sb.createOrder(order);
       setOrderId(created.id);
-      sendSMS("+19296908573","🚗 New customer request!\nFrom: "+(pickupDisplayName)+"\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+form.dropoffAddress);
+      sendSMS("+19296908573","🚗 New customer request!\nFrom: "+(pickupDisplayName)+"\nTo: "+dropoffTown.town+" ($"+dropoffTown.fee+")\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+fullDropoff);
       setSubmitted(true);
     } catch(e) { alert("Error submitting. Please try again."); }
     finally { setLoading(false); }
@@ -1146,7 +1175,7 @@ function CustomerRequest({ navigate }) {
         <p style={{color:muted,fontSize:14,marginBottom:4}}>Your driver has been notified and will confirm shortly.</p>
         {orderId && (<div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:16,marginTop:16,marginBottom:24}}><p style={{fontSize:12,color:muted,marginBottom:4}}>Your Order ID</p><p style={{fontSize:20,fontWeight:900,color:rust}}>{orderId.slice(0,8).toUpperCase()}</p><p style={{fontSize:12,color:muted,marginTop:4}}>Save this to track your delivery</p></div>)}
         <button onClick={()=>navigate("track/"+orderId.slice(0,8).toUpperCase())} style={{width:"100%",background:ink,color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15,marginBottom:10}}>📍 Track My Order</button>
-        <button onClick={()=>{setSubmitted(false);setForm({customerName:"",customerPhone:"",pickupName:"",pickupAddress:"",dropoffAddress:"",orderDetails:"",notes:""});}} style={{width:"100%",background:"none",color:muted,border:"1px solid #DDD5C8",padding:"12px",borderRadius:6,cursor:"pointer",fontSize:13}}>New Request</button>
+        <button onClick={()=>{setSubmitted(false);setForm({customerName:"",customerPhone:"",pickupName:"",pickupAddress:"",dropoffAddress:"",orderDetails:"",notes:""});setDropoffTown(null);}} style={{width:"100%",background:"none",color:muted,border:"1px solid #DDD5C8",padding:"12px",borderRadius:6,cursor:"pointer",fontSize:13}}>New Request</button>
       </div>
     </div>
   );
@@ -1202,16 +1231,39 @@ function CustomerRequest({ navigate }) {
             <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>Delivery Details</p>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
               <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Drop-off Address *</label><input name="dropoffAddress" value={form.dropoffAddress} onChange={handleChange} placeholder="Your home address" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
+              <div>
+                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:8}}>Tap Your Town for Delivery *</label>
+                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                  {DELIVERY_TOWNS.map(t=>{
+                    const sel = townSelected && dropoffTown.town===t.town;
+                    return (
+                      <button key={t.town} type="button" onClick={()=>setDropoffTown(t)}
+                        style={{padding:"8px 14px",borderRadius:20,fontSize:13,fontWeight:600,cursor:"pointer",border:"1px solid "+(sel?rust:border),background:sel?rust:"white",color:sel?"white":ink,transition:"all .15s ease"}}>
+                        {t.town} · ${t.fee}
+                      </button>
+                    );
+                  })}
+                  <button type="button" onClick={()=>setDropoffTown("__other__")}
+                    style={{padding:"8px 14px",borderRadius:20,fontSize:13,fontWeight:600,cursor:"pointer",border:"1px solid "+(isOutOfArea?"#DC3545":border),background:isOutOfArea?"#DC3545":"white",color:isOutOfArea?"white":muted,transition:"all .15s ease"}}>
+                    My town isn't listed
+                  </button>
+                </div>
+                {isOutOfArea && (
+                  <div style={{marginTop:12,background:"#FFF3CD",border:"1px solid #FFC107",borderRadius:8,padding:14,textAlign:"center"}}>
+                    <p style={{fontSize:13,color:"#856404",fontWeight:600}}>{OUT_OF_AREA_MSG}</p>
+                  </div>
+                )}
+              </div>
               <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>What did you order?</label><textarea name="orderDetails" value={form.orderDetails} onChange={handleChange} placeholder="Big Mac combo, large fries..." rows={3} style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none",resize:"vertical",fontFamily:"inherit"}}/></div>
               <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Notes</label><input name="notes" value={form.notes} onChange={handleChange} placeholder="Leave at door, call on arrival..." style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
             </div>
           </div>
           <div style={{borderTop:"1px solid #DDD5C8",paddingTop:16}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div><p style={{fontWeight:700,fontSize:15}}>Delivery Fee</p><p style={{fontSize:12,color:muted}}>Pay at drop-off or by card</p></div>
-              <p style={{fontSize:22,fontWeight:900,color:rust}}>$8.00</p>
+              <div><p style={{fontWeight:700,fontSize:15}}>Delivery Fee</p><p style={{fontSize:12,color:muted}}>{townSelected ? "To "+dropoffTown.town : "Tap your town above"}</p></div>
+              <p style={{fontSize:22,fontWeight:900,color:rust}}>{townSelected ? "$"+deliveryFee.toFixed(2) : "—"}</p>
             </div>
-            <button onClick={submit} disabled={loading||!available||!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress} style={{width:"100%",background:(!available||!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>{!available ? "Currently Offline" : loading ? "Sending..." : "Request Delivery 🚗"}</button>
+            <button onClick={submit} disabled={loading||!available||!townSelected||!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress} style={{width:"100%",background:(!available||!townSelected||!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>{!available ? "Currently Offline" : isOutOfArea ? "Outside Service Area" : !townSelected ? "Tap Your Town First" : loading ? "Sending..." : "Request Delivery 🚗"}</button>
           </div>
         </div>
       </main>
@@ -1226,7 +1278,7 @@ function TrackingPage({ navigate, initialOrderId }) {
   const [notFound, setNotFound] = useState(false);
   const [paid, setPaid] = useState(false);
   const [cashSelected, setCashSelected] = useState(false);
-  const DELIVERY_FEE = 8;
+  const DELIVERY_FEE = tracked ? Number(tracked.delivery_fee || 8) : 8;
   const track = async (id) => {
     const searchId = (id || orderId).trim();
     if (!searchId) return;
@@ -1239,7 +1291,10 @@ function TrackingPage({ navigate, initialOrderId }) {
     finally { setLoading(false); }
   };
   useEffect(() => { if (initialOrderId) track(initialOrderId); }, []);
-  const payWithStripe = () => window.open("https://buy.stripe.com/3cI5kC81Z4IDeEe4Vgd3i00?client_reference_id="+tracked.id.slice(0,8)+"&locale=auto", "_blank");
+  const payWithStripe = () => {
+    const link = STRIPE_FEE_LINKS[DELIVERY_FEE] || STRIPE_FEE_LINKS[8];
+    window.open(link+"?client_reference_id="+tracked.id.slice(0,8)+"&locale=auto", "_blank");
+  };
   const steps = ["Order Received","Driver Accepted","Picked Up","On The Way","Delivered"];
   const stepIndex = !tracked ? 0 : tracked.status==="pending" ? 1 : tracked.status==="active" || tracked.status==="ready_for_pickup" ? 2 : tracked.status==="picked_up" ? 4 : tracked.status==="delivered" ? 5 : 0;
   return (
