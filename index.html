@@ -705,12 +705,6 @@ function Dashboard({ navigate }) {
                           window.open("sms:"+order.customer_phone+"?body="+encodeURIComponent(msg));
                         }}>📲 Text Customer</button>
                       )}
-                      {(order.status==="active"||order.status==="ready_for_pickup"||order.status==="picked_up") && (
-                        <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11,borderColor:rust,color:rust}} onClick={()=>{
-                          const msg = "Hi "+order.customer_name+", it's your DELIVERme driver — I'm on my way with your order! 🚗 I'll share my live location next so you can watch me head your way.";
-                          window.open("sms:"+order.customer_phone+"?body="+encodeURIComponent(msg));
-                        }}>📍 Share My Location</button>
-                      )}
                     </div>
                   </div>
                 </div>
