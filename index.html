@@ -323,12 +323,15 @@ function LandingPage({ navigate }) {
         <div style={{maxWidth:560,margin:"0 auto"}}>
           <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,marginBottom:6}}>Welcome to DELIVERme</h2>
           <p className="lp-fade lp-d1" style={{color:muted,fontSize:14,marginBottom:20}}>See how easy it is to get what you need, delivered.</p>
-          {/* VIDEO PLACEHOLDER — replace the src with your YouTube embed link when ready */}
-          <div className="lp-fade lp-d2" style={{position:"relative",background:ink,borderRadius:12,overflow:"hidden",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <div style={{textAlign:"center",color:"white",padding:20}}>
-              <div className="lp-float" style={{fontSize:44,marginBottom:8}}>🎬</div>
-              <p style={{fontWeight:700,fontSize:15}}>Welcome video coming soon</p>
-              <p style={{fontSize:12,opacity:.7,marginTop:4}}>A quick tour of how DELIVERme works</p>
+          <div className="lp-fade lp-d2" style={{display:"flex",justifyContent:"center"}}>
+            <div style={{position:"relative",width:"100%",maxWidth:300,aspectRatio:"9/16",background:ink,borderRadius:18,overflow:"hidden",border:"4px solid "+ink,boxShadow:"0 12px 36px rgba(0,0,0,.18)"}}>
+              <iframe
+                src="https://www.youtube.com/embed/dGpU7A6fuNU?rel=0&modestbranding=1"
+                title="Welcome to DELIVERme"
+                style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              ></iframe>
             </div>
           </div>
         </div>
