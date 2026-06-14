@@ -121,6 +121,22 @@ const sb = {
     });
     if (!res.ok) throw new Error("Failed");
   },
+  async getSettings() {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/app_settings?id=eq.1", {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
+    });
+    if (!res.ok) return {};
+    const data = await res.json();
+    return data[0] || {};
+  },
+  async setSchedule(scheduleLine, announceLine) {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/app_settings?id=eq.1", {
+      method: "PATCH",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ schedule_line: scheduleLine, announce_line: announceLine, updated_at: new Date().toISOString() })
+    });
+    if (!res.ok) throw new Error("Failed");
+  },
   async deleteOrder(id) {
     const res = await fetch(SUPABASE_URL+"/rest/v1/orders?id=eq."+id, {
       method: "DELETE",
@@ -243,6 +259,8 @@ function App() {
 }
 
 function LandingPage({ navigate }) {
+  const [settings, setSettings] = useState({});
+  useEffect(() => { sb.getSettings().then(setSettings).catch(()=>{}); }, []);
   useEffect(() => {
     const els = document.querySelectorAll(".reveal");
     if (!("IntersectionObserver" in window)) { els.forEach(el=>el.classList.add("shown")); return; }
@@ -276,6 +294,13 @@ function LandingPage({ navigate }) {
       {/* Hero */}
       <section style={{background:"linear-gradient(160deg,#FFFFFF 0%,"+cream+" 100%)",padding:"48px 20px 40px",textAlign:"center",borderBottom:"1px solid "+border}}>
         <div style={{maxWidth:520,margin:"0 auto"}}>
+          {(settings.announce_line || settings.schedule_line) && (
+            <div className="lp-fade" style={{background:rust,color:"white",borderRadius:10,padding:"12px 16px",marginBottom:24}}>
+              {settings.announce_line && <div style={{fontSize:14,fontWeight:800,letterSpacing:".01em"}}>🎉 {settings.announce_line}</div>}
+              {settings.schedule_line && <div style={{fontSize:13,fontWeight:600,marginTop:settings.announce_line?5:0,opacity:.95}}>🕒 {settings.schedule_line}</div>}
+              <div style={{fontSize:11,marginTop:6,opacity:.8}}>Outside these hours we're offline — check back soon!</div>
+            </div>
+          )}
           <div className="lp-fade lp-d1" style={{marginBottom:24}}>
             <span style={{fontSize:42,fontWeight:900,color:rust}}>DELIVER</span>
             <span style={{fontSize:42,fontWeight:700,color:ink}}>me</span>
@@ -617,6 +642,7 @@ function Dashboard({ navigate }) {
           <button onClick={()=>setTab("ratings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="ratings"?ink:border),background:tab==="ratings"?ink:"transparent",color:tab==="ratings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>⭐ Ratings</button>
           <button onClick={()=>setTab("qr")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="qr"?ink:border),background:tab==="qr"?ink:"transparent",color:tab==="qr"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>📲 QR Code</button>
           <button onClick={()=>setTab("pickups")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="pickups"?ink:border),background:tab==="pickups"?ink:"transparent",color:tab==="pickups"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>📍 Pickup Spots</button>
+          <button onClick={()=>setTab("hours")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="hours"?ink:border),background:tab==="hours"?ink:"transparent",color:tab==="hours"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>🕒 Hours</button>
           <button onClick={()=>setTab("earnings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="earnings"?ink:border),background:tab==="earnings"?ink:"transparent",color:tab==="earnings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>💵 Earnings</button>
         </div>
 
@@ -717,6 +743,7 @@ function Dashboard({ navigate }) {
         {tab==="ratings" && <RatingsPanel/>}
         {tab==="qr" && <QRPanel/>}
         {tab==="pickups" && <PickupSpotsPanel/>}
+        {tab==="hours" && <HoursPanel/>}
         {tab==="earnings" && <EarningsPanel/>}
       </main>
 
@@ -807,6 +834,62 @@ function PickupSpotsPanel() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function HoursPanel() {
+  const [schedule, setSchedule] = useState("");
+  const [announce, setAnnounce] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(()=>{
+    sb.getSettings().then(s=>{
+      setSchedule(s.schedule_line || "");
+      setAnnounce(s.announce_line || "");
+    }).catch(()=>{}).finally(()=>setLoading(false));
+  },[]);
+
+  const save = async () => {
+    setSaving(true); setSaved(false);
+    try { await sb.setSchedule(schedule, announce); setSaved(true); setTimeout(()=>setSaved(false),2500); }
+    catch(e){ alert("Could not save. Try again."); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fade-in">
+      <div style={{marginBottom:16}}>
+        <h2 style={{fontSize:20,fontWeight:900}}>🕒 Hours & Announcement</h2>
+        <p style={{fontSize:13,color:muted,marginTop:4}}>This is the banner customers see at the top of your website. Update it anytime — changes go live instantly.</p>
+      </div>
+
+      {loading ? <div style={{textAlign:"center",padding:"20px",color:muted}}>Loading...</div> : (
+        <div className="card" style={{display:"flex",flexDirection:"column",gap:16}}>
+          <div>
+            <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Announcement Line (top, bold)</label>
+            <input value={announce} onChange={e=>setAnnounce(e.target.value)} placeholder="e.g. Soft launch June 20 — now serving Canaan!" style={{width:"100%",padding:"10px 12px",border:"1px solid "+border,borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+            <p style={{fontSize:11,color:muted,marginTop:4}}>Leave blank to hide this line (e.g. after launch).</p>
+          </div>
+          <div>
+            <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Hours / Schedule Line</label>
+            <input value={schedule} onChange={e=>setSchedule(e.target.value)} placeholder="e.g. Weekends 10am–10pm · Weekdays 5:30pm–10pm" style={{width:"100%",padding:"10px 12px",border:"1px solid "+border,borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+          </div>
+
+          <div style={{background:cream,border:"1px solid "+border,borderRadius:8,padding:14}}>
+            <p style={{fontSize:11,color:muted,textTransform:"uppercase",letterSpacing:".08em",marginBottom:8}}>Preview</p>
+            <div style={{background:rust,color:"white",borderRadius:10,padding:"12px 16px",textAlign:"center"}}>
+              {announce && <div style={{fontSize:14,fontWeight:800}}>🎉 {announce}</div>}
+              {schedule && <div style={{fontSize:13,fontWeight:600,marginTop:announce?5:0,opacity:.95}}>🕒 {schedule}</div>}
+              <div style={{fontSize:11,marginTop:6,opacity:.8}}>Outside these hours we're offline — check back soon!</div>
+            </div>
+          </div>
+
+          <button onClick={save} disabled={saving} style={{background:saving?"#ccc":rust,color:"white",border:"none",padding:"12px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:14}}>{saving?"Saving...":saved?"✓ Saved!":"Save & Update Website"}</button>
+        </div>
+      )}
     </div>
   );
 }
