@@ -82,6 +82,20 @@ const sb = {
     if (!res.ok) throw new Error("Failed");
     return res.json();
   },
+  async getDrivers() {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/drivers?order=created_at.desc", {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
+    });
+    if (!res.ok) return [];
+    return res.json();
+  },
+  async deleteDriver(id) {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/drivers?id=eq."+id, {
+      method: "DELETE",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
+    });
+    if (!res.ok) throw new Error("Failed to delete");
+  },
   async getPickupLocations() {
     const res = await fetch(SUPABASE_URL+"/rest/v1/pickup_locations?order=name.asc", {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
@@ -645,6 +659,7 @@ function Dashboard({ navigate }) {
           <button onClick={()=>setTab("ratings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="ratings"?ink:border),background:tab==="ratings"?ink:"transparent",color:tab==="ratings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>⭐ Ratings</button>
           <button onClick={()=>setTab("qr")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="qr"?ink:border),background:tab==="qr"?ink:"transparent",color:tab==="qr"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>📲 QR Code</button>
           <button onClick={()=>setTab("pickups")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="pickups"?ink:border),background:tab==="pickups"?ink:"transparent",color:tab==="pickups"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>📍 Pickup Spots</button>
+          <button onClick={()=>setTab("drivers")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="drivers"?ink:border),background:tab==="drivers"?ink:"transparent",color:tab==="drivers"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>🚗 Drivers</button>
           <button onClick={()=>setTab("hours")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="hours"?ink:border),background:tab==="hours"?ink:"transparent",color:tab==="hours"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>🕒 Hours</button>
           <button onClick={()=>setTab("earnings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="earnings"?ink:border),background:tab==="earnings"?ink:"transparent",color:tab==="earnings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>💵 Earnings</button>
         </div>
@@ -721,6 +736,9 @@ function Dashboard({ navigate }) {
                       {order.status==="ready_for_pickup" && <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11,background:"#FF6B1A"}} onClick={()=>updateStatus(order.id,"picked_up")}>Picked Up ✓</button>}
                       {order.status==="active" && <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11,background:"#9B59B6"}} onClick={()=>updateStatus(order.id,"picked_up")}>Picked Up</button>}
                       {order.status==="picked_up" && <button className="btn btn-red" style={{padding:"7px 14px",fontSize:11}} onClick={()=>updateStatus(order.id,"delivered")}>Mark Delivered</button>}
+                      {(order.status==="active"||order.status==="ready_for_pickup"||order.status==="picked_up") && (
+                        <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11,borderColor:"#DC3545",color:"#DC3545"}} onClick={()=>{ if(confirm("Cancel this order? It will be marked cancelled (you can delete it after).")) updateStatus(order.id,"cancelled"); }}>✕ Cancel</button>
+                      )}
                       {order.status==="delivered" && <button className="btn btn-outline" style={{padding:"7px 14px",fontSize:11,borderColor:"#27AE60",color:"#27AE60"}} onClick={()=>{updateStatus(order.id,"paid"); if(order.restaurant_slug) setRatingOrder(order);}}>💰 Mark Paid</button>}
                       {order.status==="paid" && <span style={{fontSize:11,color:"#27AE60",fontWeight:700}}>💰 Paid ✓</span>}
                       {(order.status==="paid"||order.status==="cancelled") && (
@@ -746,6 +764,7 @@ function Dashboard({ navigate }) {
         {tab==="ratings" && <RatingsPanel/>}
         {tab==="qr" && <QRPanel/>}
         {tab==="pickups" && <PickupSpotsPanel/>}
+        {tab==="drivers" && <DriversPanel/>}
         {tab==="hours" && <HoursPanel/>}
         {tab==="earnings" && <EarningsPanel/>}
       </main>
@@ -834,6 +853,61 @@ function PickupSpotsPanel() {
               <div style={{fontSize:12,color:muted,marginTop:2}}>{loc.address}</div>
             </div>
             <button onClick={()=>remove(loc.id)} style={{background:"none",color:"#DC3545",border:"1px solid #DC3545",padding:"6px 12px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap"}}>Remove</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DriversPanel() {
+  const [drivers, setDrivers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    try { const data = await sb.getDrivers(); setDrivers(data); } catch(e){} finally { setLoading(false); }
+  };
+  useEffect(()=>{ load(); },[]);
+
+  const remove = async (id, name) => {
+    if (!confirm("Remove "+(name||"this applicant")+" from your driver list?")) return;
+    try { await sb.deleteDriver(id); await load(); } catch(e){ alert("Could not remove."); }
+  };
+
+  function timeAgo(iso){ if(!iso) return ""; const d=Math.floor((Date.now()-new Date(iso))/1000); if(d<60)return"just now"; if(d<3600)return Math.floor(d/60)+"m ago"; if(d<86400)return Math.floor(d/3600)+"h ago"; return Math.floor(d/86400)+"d ago"; }
+
+  return (
+    <div className="fade-in">
+      <div style={{marginBottom:16}}>
+        <h2 style={{fontSize:20,fontWeight:900}}>🚗 Driver Applications</h2>
+        <p style={{fontSize:13,color:muted,marginTop:4}}>Everyone who applied to drive with DELIVERme. Reach out when you're ready to bring them on.</p>
+      </div>
+
+      {loading && <div style={{textAlign:"center",padding:"20px",color:muted}}>Loading...</div>}
+      {!loading && drivers.length===0 && <div style={{textAlign:"center",padding:"30px",color:muted,fontSize:13}}>No driver applications yet. Share your "Drive With Us" link to start collecting them.</div>}
+
+      {!loading && drivers.length>0 && (
+        <div style={{marginBottom:14,fontSize:13,color:muted}}>{drivers.length} applicant{drivers.length!==1?"s":""}</div>
+      )}
+
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {drivers.map(d=>(
+          <div key={d.id} className="card">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:15,marginBottom:3}}>{d.name || "Unnamed applicant"}</div>
+                {d.phone && <div style={{fontSize:13,marginBottom:2}}>📞 <a href={"tel:"+d.phone} style={{color:rust,textDecoration:"none",fontWeight:600}}>{d.phone}</a></div>}
+                {d.email && <div style={{fontSize:12,color:muted,marginBottom:2}}>✉️ {d.email}</div>}
+                {d.vehicle && <div style={{fontSize:12,color:muted,marginBottom:2}}>🚙 {d.vehicle}</div>}
+                {d.area && <div style={{fontSize:12,color:muted,marginBottom:2}}>📍 Covers: {d.area}</div>}
+                {d.license_number && <div style={{fontSize:12,color:muted,marginBottom:2}}>🪪 License: {d.license_number}</div>}
+                <div style={{fontSize:11,color:muted,marginTop:4}}>Applied {timeAgo(d.created_at)}</div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
+                {d.phone && <a href={"sms:"+d.phone} style={{background:ink,color:"white",textDecoration:"none",padding:"7px 14px",borderRadius:4,fontSize:12,fontWeight:600,whiteSpace:"nowrap"}}>Text</a>}
+                <button onClick={()=>remove(d.id, d.name)} style={{background:"none",color:"#DC3545",border:"1px solid #DC3545",padding:"7px 12px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap"}}>Remove</button>
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -1199,7 +1273,10 @@ function RestaurantPortal({ restaurant, slug }) {
                   <button onClick={async()=>{ if(confirm("Remove this order from your list?")) { try { await sb.deleteOrder(order.id); loadRecentOrders(); } catch(e){ alert("Failed to delete."); } } }} style={{marginTop:8,width:"100%",background:"none",color:"#DC3545",border:"1px solid #DC3545",padding:"6px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>🗑 Remove Order</button>
                 )}
                 {order.status === "pending" && (
-                  <div style={{marginTop:10,padding:"8px",background:"#FFF3CD",borderRadius:4,textAlign:"center",fontSize:12,color:"#856404",fontWeight:600}}>⏳ Waiting for driver to accept</div>
+                  <div style={{marginTop:10}}>
+                    <div style={{padding:"8px",background:"#FFF3CD",borderRadius:4,textAlign:"center",fontSize:12,color:"#856404",fontWeight:600,marginBottom:8}}>⏳ Waiting for driver to accept</div>
+                    <button onClick={async()=>{ if(confirm("Cancel this order?")) { try { await sb.updateOrder(order.id,{status:"cancelled"}); loadRecentOrders(); } catch(e){ alert("Could not cancel."); } } }} style={{width:"100%",background:"none",color:"#DC3545",border:"1px solid #DC3545",padding:"7px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>✕ Cancel This Order</button>
+                  </div>
                 )}
                 {order.status === "active" && (
                   <button onClick={async()=>{ try { await sb.updateOrder(order.id,{status:"ready_for_pickup"}); loadRecentOrders(); } catch(e){} }} style={{marginTop:10,background:"#FF6B1A",color:"white",border:"none",padding:"8px 16px",fontSize:12,borderRadius:4,cursor:"pointer",fontWeight:600,width:"100%"}}>🍔 Order is Ready for Pickup</button>
