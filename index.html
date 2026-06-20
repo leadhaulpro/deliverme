@@ -28,6 +28,7 @@ function getRoute() {
   if (hash === "dashboard") return { view: "dashboard" };
   if (hash === "request") return { view: "request" };
   if (hash === "drive") return { view: "drive" };
+  if (hash === "partner") return { view: "partner" };
   return { view: "home" };
 }
 
@@ -263,6 +264,7 @@ function App() {
   }
   if (route.view === "request") return <CustomerRequest navigate={navigate}/>;
   if (route.view === "drive") return <DriverSignup navigate={navigate}/>;
+  if (route.view === "partner") return <PartnerPage navigate={navigate}/>;
   if (route.view === "track") return <TrackingPage navigate={navigate} initialOrderId={route.orderId || ""}/>;
   if (route.view === "home") return <LandingPage navigate={navigate}/>;
   if (route.view === "dashboard") {
@@ -324,6 +326,7 @@ function LandingPage({ navigate }) {
           <div className="lp-fade lp-d2" style={{display:"flex",flexDirection:"column",gap:12,maxWidth:360,margin:"0 auto"}}>
             <button className="lp-btn" onClick={()=>navigate("request")} style={{background:rust,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:8,cursor:"pointer",fontWeight:700}}>🛵 Request a Delivery</button>
             <button className="lp-btn" onClick={()=>navigate("track")} style={{background:ink,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:8,cursor:"pointer",fontWeight:600}}>📍 Track My Order</button>
+            <button className="lp-btn" onClick={()=>navigate("partner")} style={{background:"none",color:ink,border:"2px solid "+ink,padding:"14px 24px",fontSize:14,borderRadius:8,cursor:"pointer",fontWeight:700}}>🤝 Partner With Us</button>
             <div style={{display:"flex",gap:10}}>
               <button className="lp-btn" onClick={()=>navigate("drive")} style={{flex:1,background:"none",color:rust,border:"1px solid "+rust,padding:"12px",fontSize:13,borderRadius:8,cursor:"pointer",fontWeight:600}}>🚗 Drive With Us</button>
               <button className="lp-btn" onClick={()=>navigate("dashboard")} style={{flex:1,background:"none",color:muted,border:"1px solid "+border,padding:"12px",fontSize:13,borderRadius:8,cursor:"pointer"}}>Driver Login</button>
@@ -1117,6 +1120,72 @@ function RatingsPanel() {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function PartnerPage({ navigate }) {
+  return (
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",color:ink}}>
+      <style>{`*{box-sizing:border-box;margin:0;padding:0} input,textarea{font-family:inherit}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+        .pp-fade{animation:fadeUp .6s ease both}
+        .pp-card{transition:transform .2s ease, box-shadow .2s ease}
+        .pp-card:active{transform:scale(.98)}
+      `}</style>
+      <header style={{background:"white",borderBottom:"1px solid "+border,padding:"14px 20px"}}>
+        <div style={{maxWidth:620,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div><span style={{fontWeight:900,color:rust,fontSize:18}}>DELIVER</span><span style={{fontWeight:700,color:ink,fontSize:18}}>me</span></div>
+          <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>← Home</button>
+        </div>
+      </header>
+
+      <main style={{maxWidth:620,margin:"0 auto",padding:"28px 16px 48px"}}>
+        {/* Intro */}
+        <div className="pp-fade" style={{textAlign:"center",marginBottom:32}}>
+          <h1 style={{fontSize:28,fontWeight:900,marginBottom:8}}>Partner With DELIVERme</h1>
+          <p style={{color:muted,fontSize:15,lineHeight:1.5}}>Reliable local delivery for the businesses that make our towns run. No big-platform fees, no algorithms — just a neighbor who shows up.</p>
+        </div>
+
+        {/* For Restaurants */}
+        <div className="pp-fade pp-card" style={{background:"white",border:"1px solid "+border,borderRadius:12,padding:24,marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:800,color:rust,letterSpacing:".08em",textTransform:"uppercase",marginBottom:12}}>🍽️ For Restaurants</div>
+          <p style={{fontSize:14,lineHeight:1.6,marginBottom:14}}>No contract. No monthly fees. No commissions taken from your sales. There's no system to integrate — just a simple portal with a built-in tip option, so customers can thank your driver for speedy service.</p>
+          <p style={{fontSize:14,lineHeight:1.6,fontWeight:700,color:ink}}>See immediate savings from the fees the big platforms charge. Take back control of your earnings.</p>
+        </div>
+
+        {/* For Local Businesses */}
+        <div className="pp-fade pp-card" style={{background:"white",border:"1px solid "+border,borderRadius:12,padding:24,marginBottom:24}}>
+          <div style={{fontSize:13,fontWeight:800,color:rust,letterSpacing:".08em",textTransform:"uppercase",marginBottom:12}}>🏪 For Local Businesses</div>
+          <p style={{fontSize:14,lineHeight:1.6,marginBottom:14}}>Enjoy extra support on your busier days, when demand is high and a driver on the road keeps things moving. Stop losing out on missed opportunities and avoid customer complaints when an urgent delivery comes up.</p>
+          <p style={{fontSize:14,lineHeight:1.6,fontWeight:700,color:ink}}>Let us be your weekend warriors.</p>
+        </div>
+
+        {/* How it works */}
+        <div className="pp-fade" style={{background:cream,border:"1px solid "+border,borderRadius:12,padding:22,marginBottom:24}}>
+          <div style={{fontSize:13,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",marginBottom:14,textAlign:"center"}}>How It Works</div>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {[
+              {n:"1",t:"You get a private portal link",d:"No app to download, no setup. Just a link your team opens."},
+              {n:"2",t:"Enter the order, hit send",d:"Customer name, phone, address — takes about 30 seconds."},
+              {n:"3",t:"We pick up and deliver",d:"You track every order's status live, start to finish."},
+            ].map(s=>(
+              <div key={s.n} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                <div style={{flexShrink:0,width:28,height:28,borderRadius:"50%",background:rust,color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14}}>{s.n}</div>
+                <div><div style={{fontWeight:700,fontSize:14}}>{s.t}</div><div style={{fontSize:13,color:muted,marginTop:2}}>{s.d}</div></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* New partner inquiry */}
+        <div className="pp-fade" style={{background:ink,color:"white",borderRadius:12,padding:26,textAlign:"center"}}>
+          <h2 style={{fontSize:20,fontWeight:900,marginBottom:8}}>Want to become a partner?</h2>
+          <p style={{fontSize:14,opacity:.9,marginBottom:18,lineHeight:1.5}}>We'd love to bring your business on board. Reach out and we'll get you set up with your own portal.</p>
+          <a href="mailto:support@deliverme-app.com?subject=DELIVERme Partnership Inquiry" style={{display:"inline-block",background:rust,color:"white",textDecoration:"none",padding:"14px 28px",borderRadius:8,fontWeight:700,fontSize:15}}>✉️ Email Us to Partner</a>
+          <p style={{fontSize:12,opacity:.7,marginTop:14}}>support@deliverme-app.com</p>
+        </div>
+      </main>
     </div>
   );
 }
