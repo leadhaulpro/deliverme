@@ -180,17 +180,17 @@ async function sendSMS(to, message) {
 }
 
 const RESTAURANTS = {
-  "general": { name: "", address: "", defaultFee: "8.00" },
-  "stateline-pizza": { name: "Stateline Pizza", address: "340 N Elm St, Canaan, CT 06018", defaultFee: "8.00" },
-  "trackside-tacos": { name: "Trackside Tacos", address: "37 Main St, Canaan, CT 06018", defaultFee: "8.00" },
-  "teo-taco": { name: "Teo Taco", address: "85 W Main St, Canaan, CT 06018", defaultFee: "8.00" },
-  "industry-kitchen": { name: "Industry Kitchen & Bar", address: "14 Railroad St, Canaan, CT 06018", defaultFee: "8.00" },
-  "picantes": { name: "Picante's Canaan", address: "499 Ashley Falls Rd, Canaan, CT 06018", defaultFee: "8.00" },
-  "cafe-gourmet": { name: "Cafe Gourmet", address: "18 E Main St, Canaan, CT 06018", defaultFee: "8.00" },
-  "mountainside-cafe": { name: "Mountainside Cafe", address: "251 US-7, Falls Village, CT 06031", defaultFee: "8.00" },
-  "homegrown-cafe": { name: "Homegrown Cafe", address: "5 Railroad St, Canaan, CT 06018", defaultFee: "8.00" },
-  "black-rabbit": { name: "Black Rabbit Bar & Grill", address: "2 Ethan Allen St, Lakeville, CT 06039", defaultFee: "10.00" },
-  "deanos-pizza": { name: "Deano's Pizza", address: "24 Millerton Rd, Lakeville, CT 06039", defaultFee: "10.00" }
+  "general": { name: "", address: "", defaultFee: "8.00", town: null },
+  "stateline-pizza": { name: "Stateline Pizza", address: "340 N Elm St, Canaan, CT 06018", defaultFee: "8.00", town: "Canaan" },
+  "trackside-tacos": { name: "Trackside Tacos", address: "37 Main St, Canaan, CT 06018", defaultFee: "8.00", town: "Canaan" },
+  "teo-taco": { name: "Teo Taco", address: "85 W Main St, Canaan, CT 06018", defaultFee: "8.00", town: "Canaan" },
+  "industry-kitchen": { name: "Industry Kitchen & Bar", address: "14 Railroad St, Canaan, CT 06018", defaultFee: "8.00", town: "Canaan" },
+  "picantes": { name: "Picante's Canaan", address: "499 Ashley Falls Rd, Canaan, CT 06018", defaultFee: "8.00", town: "Canaan" },
+  "cafe-gourmet": { name: "Cafe Gourmet", address: "18 E Main St, Canaan, CT 06018", defaultFee: "8.00", town: "Canaan" },
+  "mountainside-cafe": { name: "Mountainside Cafe", address: "251 US-7, Falls Village, CT 06031", defaultFee: "8.00", town: "Falls Village" },
+  "homegrown-cafe": { name: "Homegrown Cafe", address: "5 Railroad St, Canaan, CT 06018", defaultFee: "8.00", town: "Canaan" },
+  "black-rabbit": { name: "Black Rabbit Bar & Grill", address: "2 Ethan Allen St, Lakeville, CT 06039", defaultFee: "14.00", town: "Lakeville" },
+  "deanos-pizza": { name: "Deano's Pizza", address: "24 Millerton Rd, Lakeville, CT 06039", defaultFee: "14.00", town: "Lakeville" }
 };
 
 const STRIPE_DELIVERY = "https://buy.stripe.com/28E3cu4PNcb5bs287sd3i01";
@@ -208,19 +208,44 @@ const DELIVERY_TOWNS = [
   { town: "North Canaan", state: "CT", fee: 8 },
   { town: "East Canaan", state: "CT", fee: 8 },
   { town: "Falls Village", state: "CT", fee: 8 },
-  { town: "Salisbury", state: "CT", fee: 8 },
-  { town: "Sheffield, MA", state: "MA", fee: 8 },
-  { town: "Lakeville", state: "CT", fee: 10 },
-  { town: "Norfolk", state: "CT", fee: 10 },
-  { town: "Sharon", state: "CT", fee: 12 },
-  { town: "Cornwall", state: "CT", fee: 12 },
-  { town: "Great Barrington, MA", state: "MA", fee: 12 }
+  { town: "Salisbury", state: "CT", fee: 12 },
+  { town: "Sheffield, MA", state: "MA", fee: 12 },
+  { town: "Norfolk", state: "CT", fee: 12 },
+  { town: "Lakeville", state: "CT", fee: 14 },
+  { town: "Sharon", state: "CT", fee: 14 },
+  { town: "Cornwall", state: "CT", fee: 16 },
+  { town: "Great Barrington, MA", state: "MA", fee: 16 },
+  { town: "Millerton, NY", state: "NY", fee: 16 },
+  { town: "Torrington", state: "CT", fee: 25 },
+  { town: "Winsted", state: "CT", fee: 25 }
 ];
+// Canaan and its immediate cluster count as "base" — a pickup from base is a single trip.
+const BASE_TOWNS = ["Canaan","North Canaan","East Canaan","Falls Village"];
+// Route-based fee calculator.
+// Rules: same town = that town's fee. Base pickup = drop-off town's fee.
+// Outside town -> different town (dual trip) = higher town's fee + half the lower town's fee.
+function calcRouteFee(pickupTown, dropoffTown) {
+  const p = DELIVERY_TOWNS.find(t=>t.town===pickupTown);
+  const d = DELIVERY_TOWNS.find(t=>t.town===dropoffTown);
+  if (!d) return null;
+  // If pickup unknown, just use drop-off fee (safe fallback)
+  if (!p) return d.fee;
+  // Same town
+  if (pickupTown === dropoffTown) return d.fee;
+  // Pickup is base (Canaan cluster) -> single trip, drop-off fee only
+  if (BASE_TOWNS.includes(pickupTown)) return d.fee;
+  // Dual trip: higher fee + half the lower fee
+  const hi = Math.max(p.fee, d.fee);
+  const lo = Math.min(p.fee, d.fee);
+  return hi + Math.round(lo/2);
+}
 // Stripe payment link per fee amount (used on the tracking/payment page).
 const STRIPE_FEE_LINKS = {
   8: "https://buy.stripe.com/3cI5kC81Z4IDeEe4Vgd3i00",
   10: "https://buy.stripe.com/dRmeVc81Z4ID8fQfzUd3i06",
-  12: "https://buy.stripe.com/28EcN4cif8YT67IcnId3i05"
+  12: "https://buy.stripe.com/28EcN4cif8YT67IcnId3i05",
+  14: "https://buy.stripe.com/dRm4gyeqnejddAa4Vgd3i07",
+  16: "https://buy.stripe.com/fZucN4eqngrl7bM5Zkd3i08"
 };
 const OUT_OF_AREA_MSG = "Thanks for the opportunity to earn your business. We hope to be onboarding in your area soon.";
 let audioCtx = null;
@@ -1195,6 +1220,11 @@ function PartnerPage({ navigate }) {
 function RestaurantPortal({ restaurant, slug }) {
   const isGeneral = !restaurant.name;
   const [form, setForm] = useState({ restaurantName: restaurant.name || "", restaurantAddress: restaurant.address || "", customerName:"",customerPhone:"",dropoffAddress:"",orderDetails:"",notes:"",deliveryFee:restaurant.defaultFee });
+  const [dropTown, setDropTown] = useState(null); // drop-off town object for route pricing
+  const dropTownSelected = dropTown && dropTown !== "__other__";
+  // Restaurant's own town is locked from its address. Route fee = restaurant town -> drop-off town.
+  const routeFee = (restaurant.town && dropTownSelected) ? calcRouteFee(restaurant.town, dropTown.town)
+                   : (dropTownSelected ? dropTown.fee : (parseFloat(restaurant.defaultFee)||8));
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [orderId, setOrderId] = useState(null);
@@ -1224,12 +1254,15 @@ function RestaurantPortal({ restaurant, slug }) {
   const submit = async () => {
     if(!form.customerName||!form.customerPhone||!form.dropoffAddress) return;
     if(isGeneral && !form.restaurantName) return;
+    if(!dropTownSelected) return;
     setLoading(true);
     try {
-      const order = { restaurant_name: form.restaurantName || restaurant.name, restaurant_address: form.restaurantAddress || restaurant.address, restaurant_slug: slug, customer_name:form.customerName, customer_phone:form.customerPhone, dropoff_address:form.dropoffAddress, order_details:form.orderDetails, notes:form.notes, delivery_fee:parseFloat(form.deliveryFee)||8, status:"pending", created_at:new Date().toISOString() };
+      const townLabel = dropTown.town.includes(",") ? dropTown.town : (dropTown.town + ", " + dropTown.state);
+      const fullDropoff = form.dropoffAddress.includes(townLabel) ? form.dropoffAddress : form.dropoffAddress + ", " + townLabel;
+      const order = { restaurant_name: form.restaurantName || restaurant.name, restaurant_address: form.restaurantAddress || restaurant.address, restaurant_slug: slug, customer_name:form.customerName, customer_phone:form.customerPhone, dropoff_address:fullDropoff, order_details:form.orderDetails, notes:form.notes, delivery_fee:routeFee, status:"pending", created_at:new Date().toISOString() };
       const [created] = await sb.createOrder(order);
       setOrderId(created.id);
-      sendSMS("+19296908573","🚗 New delivery from "+(form.restaurantName||restaurant.name)+"!\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+form.dropoffAddress+"\nFee: $"+form.deliveryFee);
+      sendSMS("+19296908573","🚗 New delivery from "+(form.restaurantName||restaurant.name)+"!\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nTo: "+dropTown.town+"\nDrop-off: "+fullDropoff+"\nFee: $"+routeFee);
       setSubmitted(true);
     } catch(e) { alert("Error submitting. Please try again."); }
     finally { setLoading(false); }
@@ -1260,7 +1293,7 @@ function RestaurantPortal({ restaurant, slug }) {
           ) : (
             <div style={{background:"#D4EDDA",border:"1px solid #C3E6CB",borderRadius:8,padding:16,textAlign:"center",marginBottom:16}}><p style={{fontWeight:700,color:"#155724"}}>🎉 Thanks for the tip!</p></div>
           )}
-          <button onClick={()=>{setSubmitted(false);setOrderId(null);setTipped(false);setForm({restaurantName:form.restaurantName,restaurantAddress:form.restaurantAddress,customerName:"",customerPhone:"",dropoffAddress:"",orderDetails:"",notes:"",deliveryFee:restaurant.defaultFee});}} style={{width:"100%",background:"none",color:muted,border:"1px solid #DDD5C8",padding:"11px",fontSize:13,borderRadius:6,cursor:"pointer"}}>New Request</button>
+          <button onClick={()=>{setSubmitted(false);setOrderId(null);setTipped(false);setDropTown(null);setForm({restaurantName:form.restaurantName,restaurantAddress:form.restaurantAddress,customerName:"",customerPhone:"",dropoffAddress:"",orderDetails:"",notes:"",deliveryFee:restaurant.defaultFee});}} style={{width:"100%",background:"none",color:muted,border:"1px solid #DDD5C8",padding:"11px",fontSize:13,borderRadius:6,cursor:"pointer"}}>New Request</button>
         </div>
       </div>
     );
@@ -1313,9 +1346,29 @@ function RestaurantPortal({ restaurant, slug }) {
             <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Notes</label>
             <input name="notes" value={form.notes} onChange={handleChange} placeholder="Leave at door, call on arrival..." style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
           </div>
+          <div>
+            <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:8}}>Tap the Delivery Town *</label>
+            <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+              {DELIVERY_TOWNS.map(t=>{
+                const sel = dropTownSelected && dropTown.town===t.town;
+                return (
+                  <button key={t.town} type="button" onClick={()=>setDropTown(t)}
+                    style={{padding:"7px 13px",borderRadius:20,fontSize:13,fontWeight:600,cursor:"pointer",border:"1px solid "+(sel?rust:border),background:sel?rust:"white",color:sel?"white":ink,transition:"all .15s ease"}}>
+                    {t.town}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {dropTownSelected && (
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:cream,border:"1px solid "+border,borderRadius:8,padding:"12px 14px"}}>
+              <div><p style={{fontWeight:700,fontSize:14}}>Delivery Fee</p><p style={{fontSize:12,color:muted}}>{(restaurant.town||"Pickup")+" → "+dropTown.town}</p></div>
+              <p style={{fontSize:20,fontWeight:900,color:rust}}>${routeFee.toFixed(2)}</p>
+            </div>
+          )}
           <div style={{borderTop:"1px solid #DDD5C8",paddingTop:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span style={{fontSize:12,color:muted}}>Pickup: <strong>{form.restaurantName || restaurant.name || "Your Restaurant"}</strong></span>
-            <button onClick={submit} disabled={loading||!available||!form.customerName||!form.customerPhone||!form.dropoffAddress||(isGeneral&&!form.restaurantName)} style={{background:(loading||!available||!form.customerName||!form.customerPhone||!form.dropoffAddress)?"#ccc":rust,color:"white",border:"none",padding:"11px 22px",fontSize:13,borderRadius:6,cursor:"pointer",fontWeight:600}}>{!available ? "Offline" : loading ? "Sending..." : "Request Delivery →"}</button>
+            <button onClick={submit} disabled={loading||!available||!dropTownSelected||!form.customerName||!form.customerPhone||!form.dropoffAddress||(isGeneral&&!form.restaurantName)} style={{background:(loading||!available||!dropTownSelected||!form.customerName||!form.customerPhone||!form.dropoffAddress)?"#ccc":rust,color:"white",border:"none",padding:"11px 22px",fontSize:13,borderRadius:6,cursor:"pointer",fontWeight:600}}>{!available ? "Offline" : !dropTownSelected ? "Tap Delivery Town" : loading ? "Sending..." : "Request Delivery →"}</button>
           </div>
         </div>
         <div style={{marginTop:32}}>
@@ -1375,6 +1428,7 @@ function RestaurantPortal({ restaurant, slug }) {
 function CustomerRequest({ navigate }) {
   const [form, setForm] = useState({ customerName:"", customerPhone:"", pickupName:"", pickupAddress:"", dropoffAddress:"", orderDetails:"", notes:"" });
   const [dropoffTown, setDropoffTown] = useState(null); // selected town object {town,fee} or "__other__"
+  const [pickupTown, setPickupTown] = useState(null); // selected pickup town object
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [orderId, setOrderId] = useState(null);
@@ -1385,20 +1439,23 @@ function CustomerRequest({ navigate }) {
   const handleChange = e => setForm(prev => ({...prev, [e.target.name]: e.target.value}));
   const isOutOfArea = dropoffTown === "__other__";
   const townSelected = dropoffTown && dropoffTown !== "__other__";
-  const deliveryFee = townSelected ? dropoffTown.fee : 8;
+  const pickupTownSelected = pickupTown && pickupTown !== "__other__";
+  // Route-based fee: needs both pickup and drop-off town. Falls back to drop-off fee if pickup not chosen.
+  const deliveryFee = (townSelected && pickupTownSelected) ? calcRouteFee(pickupTown.town, dropoffTown.town) : (townSelected ? dropoffTown.fee : 8);
   const submit = async () => {
     if (!form.customerName || !form.customerPhone || !form.pickupAddress || !form.dropoffAddress) return;
-    if (!townSelected) return;
+    if (!townSelected || !pickupTownSelected) return;
     setLoading(true);
     try {
       const pickupDisplayName = form.pickupName==="__other__" ? (form.pickupNameOther||"Customer Request") : (form.pickupName||"Customer Request");
       // Build a full GPS-ready address: "street, Town, ST" (town label may already include state)
       const townLabel = dropoffTown.town.includes(",") ? dropoffTown.town : (dropoffTown.town + ", " + dropoffTown.state);
       const fullDropoff = form.dropoffAddress + ", " + townLabel;
-      const order = { restaurant_name: pickupDisplayName, restaurant_address: form.pickupAddress, customer_name: form.customerName, customer_phone: form.customerPhone, dropoff_address: fullDropoff, order_details: form.orderDetails, notes: form.notes, delivery_fee: dropoffTown.fee, status: "pending", created_at: new Date().toISOString() };
+      const routeFee = calcRouteFee(pickupTown.town, dropoffTown.town);
+      const order = { restaurant_name: pickupDisplayName, restaurant_address: form.pickupAddress, customer_name: form.customerName, customer_phone: form.customerPhone, dropoff_address: fullDropoff, order_details: form.orderDetails, notes: form.notes, delivery_fee: routeFee, status: "pending", created_at: new Date().toISOString() };
       const [created] = await sb.createOrder(order);
       setOrderId(created.id);
-      sendSMS("+19296908573","🚗 New customer request!\nFrom: "+(pickupDisplayName)+"\nTo: "+dropoffTown.town+" ($"+dropoffTown.fee+")\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+fullDropoff);
+      sendSMS("+19296908573","🚗 New customer request!\nFrom: "+(pickupDisplayName)+" ("+pickupTown.town+")\nTo: "+dropoffTown.town+" ($"+routeFee+")\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+fullDropoff);
       setSubmitted(true);
     } catch(e) { alert("Error submitting. Please try again."); }
     finally { setLoading(false); }
@@ -1490,16 +1547,31 @@ function CustomerRequest({ navigate }) {
                   </div>
                 )}
               </div>
+              <div>
+                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:8}}>Tap the Pickup Town *</label>
+                <p style={{fontSize:12,color:muted,marginBottom:8,marginTop:-4}}>Which town are we picking up from? Your fee is based on the distance between pickup and drop-off.</p>
+                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                  {DELIVERY_TOWNS.map(t=>{
+                    const sel = pickupTownSelected && pickupTown.town===t.town;
+                    return (
+                      <button key={t.town} type="button" onClick={()=>setPickupTown(t)}
+                        style={{padding:"8px 14px",borderRadius:20,fontSize:13,fontWeight:600,cursor:"pointer",border:"1px solid "+(sel?ink:border),background:sel?ink:"white",color:sel?"white":ink,transition:"all .15s ease"}}>
+                        {t.town}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>What did you order?</label><textarea name="orderDetails" value={form.orderDetails} onChange={handleChange} placeholder="Big Mac combo, large fries..." rows={3} style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none",resize:"vertical",fontFamily:"inherit"}}/></div>
               <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Notes</label><input name="notes" value={form.notes} onChange={handleChange} placeholder="Leave at door, call on arrival..." style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
             </div>
           </div>
           <div style={{borderTop:"1px solid #DDD5C8",paddingTop:16}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div><p style={{fontWeight:700,fontSize:15}}>Delivery Fee</p><p style={{fontSize:12,color:muted}}>{townSelected ? "To "+dropoffTown.town : "Tap your town above"}</p></div>
-              <p style={{fontSize:22,fontWeight:900,color:rust}}>{townSelected ? "$"+deliveryFee.toFixed(2) : "—"}</p>
+              <div><p style={{fontWeight:700,fontSize:15}}>Delivery Fee</p><p style={{fontSize:12,color:muted}}>{(townSelected&&pickupTownSelected) ? pickupTown.town+" → "+dropoffTown.town : "Tap pickup & drop-off towns"}</p></div>
+              <p style={{fontSize:22,fontWeight:900,color:rust}}>{(townSelected&&pickupTownSelected) ? "$"+deliveryFee.toFixed(2) : "—"}</p>
             </div>
-            <button onClick={submit} disabled={loading||!available||!townSelected||!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress} style={{width:"100%",background:(!available||!townSelected||!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>{!available ? "Currently Offline" : isOutOfArea ? "Outside Service Area" : !townSelected ? "Tap Your Town First" : loading ? "Sending..." : "Request Delivery 🚗"}</button>
+            <button onClick={submit} disabled={loading||!available||!townSelected||!pickupTownSelected||!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress} style={{width:"100%",background:(!available||!townSelected||!pickupTownSelected||!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>{!available ? "Currently Offline" : isOutOfArea ? "Outside Service Area" : !townSelected ? "Tap Drop-off Town" : !pickupTownSelected ? "Tap Pickup Town" : loading ? "Sending..." : "Request Delivery 🚗"}</button>
           </div>
         </div>
       </main>
@@ -1590,7 +1662,18 @@ function TrackingPage({ navigate, initialOrderId }) {
                   <p style={{fontSize:11,color:muted,marginTop:6}}>Want to tip? You can add a tip on the card screen, or hand it to your driver directly.</p>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  <button onClick={payWithStripe} style={{background:"#635BFF",color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>💳 Pay by Card / Apple Pay — ${DELIVERY_FEE.toFixed(2)}</button>
+                  {STRIPE_FEE_LINKS[DELIVERY_FEE] ? (
+                    <button onClick={payWithStripe} style={{background:"#635BFF",color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>💳 Pay by Card / Apple Pay — ${DELIVERY_FEE.toFixed(2)}</button>
+                  ) : (
+                    <div style={{background:"#F0EDE6",border:"1px solid "+border,borderRadius:6,padding:12,textAlign:"center"}}>
+                      <p style={{fontSize:13,color:muted,marginBottom:8}}>For this delivery amount, please pay by <strong>Venmo</strong>, <strong>Cash App</strong>, or <strong>cash</strong>:</p>
+                      <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+                        <a href="https://venmo.com/Delivermeapp" target="_blank" style={{background:"#3D95CE",color:"white",textDecoration:"none",padding:"10px 16px",borderRadius:6,fontWeight:700,fontSize:14}}>Venmo</a>
+                        <a href="https://cash.app/$Delivermeapp" target="_blank" style={{background:"#00C244",color:"white",textDecoration:"none",padding:"10px 16px",borderRadius:6,fontWeight:700,fontSize:14}}>Cash App</a>
+                      </div>
+                      <p style={{fontSize:11,color:muted,marginTop:8}}>@Delivermeapp · $Delivermeapp · send ${DELIVERY_FEE.toFixed(2)}</p>
+                    </div>
+                  )}
                   <button onClick={()=>setCashSelected(true)} style={{background:"white",color:ink,border:"2px solid "+ink,padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15}}>💵 Pay Cash on Delivery</button>
                   {cashSelected && (
                     <div style={{background:"#FFF3CD",border:"1px solid #FFC107",borderRadius:6,padding:12,textAlign:"center"}}>
