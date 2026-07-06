@@ -751,7 +751,8 @@ function Dashboard({ navigate }) {
                     </div>
                     <div style={{fontSize:11,color:muted,marginBottom:6,letterSpacing:".05em"}}>Order #{order.id.slice(0,8).toUpperCase()}</div>
                     <div style={{fontSize:13,marginBottom:2}}><strong>{order.customer_name}</strong> · {order.customer_phone}</div>
-                    <div style={{fontSize:13,color:muted,marginBottom:2}}>📍 <a href={`https://maps.apple.com/?daddr=${encodeURIComponent(order.dropoff_address)}`} style={{color:rust,textDecoration:"none",fontWeight:600}}>{order.dropoff_address}</a></div>
+                    {order.restaurant_address && <div style={{fontSize:13,color:muted,marginBottom:2}}>🟢 Pickup: <a href={`https://maps.apple.com/?daddr=${encodeURIComponent(order.restaurant_address)}`} style={{color:"#1F8A4C",textDecoration:"none",fontWeight:600}}>{order.restaurant_address}</a></div>}
+                    <div style={{fontSize:13,color:muted,marginBottom:2}}>🔴 Drop-off: <a href={`https://maps.apple.com/?daddr=${encodeURIComponent(order.dropoff_address)}`} style={{color:rust,textDecoration:"none",fontWeight:600}}>{order.dropoff_address}</a></div>
                     {order.order_details && <div style={{fontSize:12,color:muted}}>🧾 {order.order_details}</div>}
                     {order.notes && <div style={{fontSize:12,color:muted,fontStyle:"italic"}}>"{order.notes}"</div>}
                   </div>
@@ -1442,9 +1443,14 @@ function CustomerRequest({ navigate }) {
   const pickupTownSelected = pickupTown && pickupTown !== "__other__";
   // Route-based fee: needs both pickup and drop-off town. Falls back to drop-off fee if pickup not chosen.
   const deliveryFee = (townSelected && pickupTownSelected) ? calcRouteFee(pickupTown.town, dropoffTown.town) : (townSelected ? dropoffTown.fee : 8);
+  // An address is considered complete if it has a street number (a digit) and is reasonably long.
+  const addressComplete = (addr) => { const a=(addr||"").trim(); return a.length>=6 && /\d/.test(a); };
+  const pickupOk = addressComplete(form.pickupAddress);
+  const dropoffOk = addressComplete(form.dropoffAddress);
   const submit = async () => {
     if (!form.customerName || !form.customerPhone || !form.pickupAddress || !form.dropoffAddress) return;
     if (!townSelected || !pickupTownSelected) return;
+    if (!pickupOk || !dropoffOk) return;
     setLoading(true);
     try {
       const pickupDisplayName = form.pickupName==="__other__" ? (form.pickupNameOther||"Customer Request") : (form.pickupName||"Customer Request");
@@ -1519,13 +1525,17 @@ function CustomerRequest({ navigate }) {
               {form.pickupName==="__other__" && (
                 <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Place Name</label><input value={form.pickupNameOther||""} onChange={e=>setForm(prev=>({...prev,pickupNameOther:e.target.value}))} placeholder="Name of the place" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
               )}
-              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Pickup Address *</label><input name="pickupAddress" value={form.pickupAddress} onChange={handleChange} placeholder="123 Main St, Canaan, CT" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Pickup Address *</label><input name="pickupAddress" value={form.pickupAddress} onChange={handleChange} placeholder="123 Main St, Canaan, CT" style={{width:"100%",padding:"10px 12px",border:"1px solid "+(form.pickupAddress&&!pickupOk?"#DC3545":"#DDD5C8"),borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+                {form.pickupAddress && !pickupOk && <p style={{fontSize:11,color:"#DC3545",marginTop:4}}>Please enter a full street address, including the number.</p>}
+              </div>
             </div>
           </div>
           <div>
             <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>Delivery Details</p>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Drop-off Address *</label><input name="dropoffAddress" value={form.dropoffAddress} onChange={handleChange} placeholder="Your home address" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Drop-off Address *</label><input name="dropoffAddress" value={form.dropoffAddress} onChange={handleChange} placeholder="123 Your St (include street number)" style={{width:"100%",padding:"10px 12px",border:"1px solid "+(form.dropoffAddress&&!dropoffOk?"#DC3545":"#DDD5C8"),borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+                {form.dropoffAddress && !dropoffOk && <p style={{fontSize:11,color:"#DC3545",marginTop:4}}>Please enter a full street address, including the number.</p>}
+              </div>
               <div>
                 <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:8}}>Tap Your Town for Delivery *</label>
                 <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
@@ -1573,7 +1583,7 @@ function CustomerRequest({ navigate }) {
               <div><p style={{fontWeight:700,fontSize:15}}>Delivery Fee</p><p style={{fontSize:12,color:muted}}>{(townSelected&&pickupTownSelected) ? pickupTown.town+" → "+dropoffTown.town : "Tap pickup & drop-off towns"}</p></div>
               <p style={{fontSize:22,fontWeight:900,color:rust}}>{(townSelected&&pickupTownSelected) ? "$"+deliveryFee.toFixed(2) : "—"}</p>
             </div>
-            <button onClick={submit} disabled={loading||!available||!townSelected||!pickupTownSelected||!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress} style={{width:"100%",background:(!available||!townSelected||!pickupTownSelected||!form.customerName||!form.customerPhone||!form.pickupAddress||!form.dropoffAddress)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>{!available ? "Currently Offline" : isOutOfArea ? "Outside Service Area" : !townSelected ? "Tap Drop-off Town" : !pickupTownSelected ? "Tap Pickup Town" : loading ? "Sending..." : "Request Delivery 🚗"}</button>
+            <button onClick={submit} disabled={loading||!available||!townSelected||!pickupTownSelected||!form.customerName||!form.customerPhone||!pickupOk||!dropoffOk} style={{width:"100%",background:(!available||!townSelected||!pickupTownSelected||!form.customerName||!form.customerPhone||!pickupOk||!dropoffOk)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>{!available ? "Currently Offline" : isOutOfArea ? "Outside Service Area" : !form.customerName||!form.customerPhone ? "Enter Your Name & Phone" : !pickupOk ? "Enter Full Pickup Address" : !dropoffOk ? "Enter Full Drop-off Address" : !pickupTownSelected ? "Tap Pickup Town" : !townSelected ? "Tap Drop-off Town" : loading ? "Sending..." : "Request Delivery 🚗"}</button>
           </div>
         </div>
       </main>
