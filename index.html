@@ -1448,14 +1448,16 @@ function CustomerRequest({ navigate }) {
     setLoading(true);
     try {
       const pickupDisplayName = form.pickupName==="__other__" ? (form.pickupNameOther||"Customer Request") : (form.pickupName||"Customer Request");
-      // Build a full GPS-ready address: "street, Town, ST" (town label may already include state)
-      const townLabel = dropoffTown.town.includes(",") ? dropoffTown.town : (dropoffTown.town + ", " + dropoffTown.state);
-      const fullDropoff = form.dropoffAddress + ", " + townLabel;
+      // Build full GPS-ready addresses: "street, Town, ST" (town label may already include state)
+      const dropTownLabel = dropoffTown.town.includes(",") ? dropoffTown.town : (dropoffTown.town + ", " + dropoffTown.state);
+      const pickTownLabel = pickupTown.town.includes(",") ? pickupTown.town : (pickupTown.town + ", " + pickupTown.state);
+      const fullDropoff = form.dropoffAddress.includes(pickTownLabel)||form.dropoffAddress.includes(dropTownLabel) ? form.dropoffAddress : form.dropoffAddress + ", " + dropTownLabel;
+      const fullPickup = form.pickupAddress.includes(pickTownLabel) ? form.pickupAddress : form.pickupAddress + ", " + pickTownLabel;
       const routeFee = calcRouteFee(pickupTown.town, dropoffTown.town);
-      const order = { restaurant_name: pickupDisplayName, restaurant_address: form.pickupAddress, customer_name: form.customerName, customer_phone: form.customerPhone, dropoff_address: fullDropoff, order_details: form.orderDetails, notes: form.notes, delivery_fee: routeFee, status: "pending", created_at: new Date().toISOString() };
+      const order = { restaurant_name: pickupDisplayName, restaurant_address: fullPickup, customer_name: form.customerName, customer_phone: form.customerPhone, dropoff_address: fullDropoff, order_details: form.orderDetails, notes: form.notes, delivery_fee: routeFee, status: "pending", created_at: new Date().toISOString() };
       const [created] = await sb.createOrder(order);
       setOrderId(created.id);
-      sendSMS("+19296908573","🚗 New customer request!\nFrom: "+(pickupDisplayName)+" ("+pickupTown.town+")\nTo: "+dropoffTown.town+" ($"+routeFee+")\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+fullDropoff);
+      sendSMS("+19296908573","🚗 New customer request!\nFrom: "+(pickupDisplayName)+" ("+pickupTown.town+")\nPickup: "+fullPickup+"\nTo: "+dropoffTown.town+" ($"+routeFee+")\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+fullDropoff);
       setSubmitted(true);
     } catch(e) { alert("Error submitting. Please try again."); }
     finally { setLoading(false); }
