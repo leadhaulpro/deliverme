@@ -29,6 +29,8 @@ function getRoute() {
   if (hash === "request") return { view: "request" };
   if (hash === "drive") return { view: "drive" };
   if (hash === "partner") return { view: "partner" };
+  if (hash === "terms") return { view: "terms" };
+  if (hash === "privacy") return { view: "privacy" };
   return { view: "home" };
 }
 
@@ -216,8 +218,8 @@ const DELIVERY_TOWNS = [
   { town: "Cornwall", state: "CT", fee: 16 },
   { town: "Great Barrington, MA", state: "MA", fee: 16 },
   { town: "Millerton, NY", state: "NY", fee: 16 },
-  { town: "Torrington", state: "CT", fee: 25 },
-  { town: "Winsted", state: "CT", fee: 25 }
+  { town: "Torrington", state: "CT", fee: 45 },
+  { town: "Winsted", state: "CT", fee: 45 }
 ];
 // Canaan and its immediate cluster count as "base" — a pickup from base is a single trip.
 const BASE_TOWNS = ["Canaan","North Canaan","East Canaan","Falls Village"];
@@ -251,7 +253,8 @@ const STRIPE_FEE_LINKS = {
   21: "https://buy.stripe.com/8x2bJ04PNb71fIi4Vgd3i0b",
   22: "https://buy.stripe.com/4gM4gy4PN8YT7bM3Rcd3i0c",
   23: "https://buy.stripe.com/eVqcN41DB5MH67IfzUd3i0d",
-  24: "https://buy.stripe.com/5kQdR89635MH67I4Vgd3i0e"
+  24: "https://buy.stripe.com/5kQdR89635MH67I4Vgd3i0e",
+  45: "https://buy.stripe.com/14A28qgyvb71bs2fzUd3i0h"
 };
 const OUT_OF_AREA_MSG = "Thanks for the opportunity to earn your business. We hope to be onboarding in your area soon.";
 let audioCtx = null;
@@ -298,6 +301,8 @@ function App() {
   if (route.view === "request") return <CustomerRequest navigate={navigate}/>;
   if (route.view === "drive") return <DriverSignup navigate={navigate}/>;
   if (route.view === "partner") return <PartnerPage navigate={navigate}/>;
+  if (route.view === "terms") return <LegalPage navigate={navigate} kind="terms"/>;
+  if (route.view === "privacy") return <LegalPage navigate={navigate} kind="privacy"/>;
   if (route.view === "track") return <TrackingPage navigate={navigate} initialOrderId={route.orderId || ""}/>;
   if (route.view === "home") return <LandingPage navigate={navigate}/>;
   if (route.view === "dashboard") {
@@ -480,6 +485,7 @@ function LandingPage({ navigate }) {
           <div style={{marginBottom:8}}><span style={{fontWeight:900,color:"white",fontSize:18}}>DELIVER</span><span style={{fontWeight:700,color:"#E8B4AE",fontSize:18}}>me</span></div>
           <p style={{fontSize:12,opacity:.7,marginBottom:8}}>Delivery for small town living · Canaan, CT</p>
           <p style={{fontSize:12,opacity:.7}}>Questions? <a href="mailto:support@deliverme-app.com" style={{color:"#E8B4AE",textDecoration:"none"}}>support@deliverme-app.com</a></p>
+          <p style={{fontSize:11,opacity:.6,marginTop:12}}><span onClick={()=>navigate("privacy")} style={{color:"#E8B4AE",cursor:"pointer",textDecoration:"underline"}}>Privacy Policy</span> · <span onClick={()=>navigate("terms")} style={{color:"#E8B4AE",cursor:"pointer",textDecoration:"underline"}}>Terms of Service</span></p>
           <p style={{fontSize:11,opacity:.5,marginTop:12}}>Restaurant? Ask your DELIVERme driver for your portal link.</p>
         </div>
       </footer>
@@ -518,11 +524,12 @@ function PinEntry({ onSuccess }) {
 function DriverSignup({ navigate }) {
   const [form, setForm] = useState({ name:"", phone:"", email:"", vehicle:"", area:"", licenseNumber:"" });
   const [agreed, setAgreed] = useState(false);
+  const [smsConsent, setSmsConsent] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const handleChange = e => setForm(prev => ({...prev, [e.target.name]: e.target.value}));
   const submit = async () => {
-    if (!form.name || !form.phone || !agreed) return;
+    if (!form.name || !form.phone || !agreed || !smsConsent) return;
     setLoading(true);
     try {
       await sb.createDriver({ name: form.name, phone: form.phone, email: form.email, vehicle: form.vehicle, area: form.area, license_number: form.licenseNumber, agreed_to_terms: agreed, status: "pending" });
@@ -578,7 +585,11 @@ function DriverSignup({ navigate }) {
             <input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)} style={{marginTop:3,width:18,height:18,flexShrink:0}}/>
             <span style={{fontSize:13,color:ink}}>I have read and agree to the Independent Contractor terms above. I understand I am an independent contractor, not an employee of Ancillary LLC, and am solely responsible for my own license, insurance, taxes, and conduct.</span>
           </label>
-          <button onClick={submit} disabled={loading||!form.name||!form.phone||!agreed} style={{width:"100%",background:(!form.name||!form.phone||!agreed)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>{loading ? "Submitting..." : "Submit Application"}</button>
+          <label style={{display:"flex",gap:10,alignItems:"flex-start",cursor:"pointer",marginTop:4}}>
+            <input type="checkbox" checked={smsConsent} onChange={e=>setSmsConsent(e.target.checked)} style={{marginTop:3,width:18,height:18,flexShrink:0}}/>
+            <span style={{fontSize:13,color:ink}}>I agree to receive delivery-related text messages (new order alerts and delivery updates) from DELIVERme at the number I provided. Message frequency varies. Message &amp; data rates may apply. Reply STOP to opt out, HELP for help. See our <span style={{color:rust,fontWeight:700,textDecoration:"underline"}} onClick={(e)=>{e.preventDefault();navigate("privacy");}}>Privacy Policy</span> and <span style={{color:rust,fontWeight:700,textDecoration:"underline"}} onClick={(e)=>{e.preventDefault();navigate("terms");}}>Terms</span>.</span>
+          </label>
+          <button onClick={submit} disabled={loading||!form.name||!form.phone||!agreed||!smsConsent} style={{width:"100%",background:(!form.name||!form.phone||!agreed||!smsConsent)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>{loading ? "Submitting..." : "Submit Application"}</button>
         </div>
       </main>
     </div>
@@ -1158,6 +1169,84 @@ function RatingsPanel() {
   );
 }
 
+function LegalPage({ navigate, kind }) {
+  const isTerms = kind === "terms";
+  const updated = "January 2026";
+  return (
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",color:ink}}>
+      <header style={{background:"white",borderBottom:"1px solid "+border,padding:"14px 20px"}}>
+        <div style={{maxWidth:720,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{cursor:"pointer"}} onClick={()=>navigate("")}><span style={{fontWeight:900,color:rust,fontSize:18}}>DELIVER</span><span style={{fontWeight:700,color:ink,fontSize:18}}>me</span></div>
+          <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>← Home</button>
+        </div>
+      </header>
+      <main style={{maxWidth:720,margin:"0 auto",padding:"32px 20px 60px",lineHeight:1.6,fontSize:14.5}}>
+        <h1 style={{fontSize:26,fontWeight:900,marginBottom:6}}>{isTerms ? "Terms of Service" : "Privacy Policy"}</h1>
+        <p style={{color:muted,fontSize:13,marginBottom:26}}>Last updated: {updated}</p>
+
+        {isTerms ? (
+          <div>
+            <p style={{marginBottom:16}}>Welcome to DELIVERme, a local delivery service operated by Ancillary LLC ("DELIVERme," "we," "us"). By using our website, requesting a delivery, or signing up as a driver, you agree to these Terms of Service.</p>
+
+            <h2 style={sh}>Our Service</h2>
+            <p style={p}>DELIVERme provides local delivery of food, groceries, supplies, and other goods within our service area in Litchfield County, CT and surrounding towns. Delivery fees are shown before you confirm a request and are based on pickup and drop-off distance.</p>
+
+            <h2 style={sh}>Orders & Payment</h2>
+            <p style={p}>You agree to provide accurate pickup and drop-off information. Delivery fees are due as shown at checkout and may be paid by card, cash, or other accepted methods. Payment for the goods themselves (food, products) is handled separately with the merchant unless otherwise arranged.</p>
+
+            <h2 style={sh}>SMS / Text Messaging</h2>
+            <p style={p}>By providing your mobile number, you consent to receive delivery-related text messages from DELIVERme (order alerts, status, and tracking updates). Message frequency varies based on your activity. Message and data rates may apply. Reply STOP to opt out at any time, or HELP for help. Consent to receive texts is not a condition of any purchase. See our <span style={link} onClick={()=>navigate("privacy")}>Privacy Policy</span> for details on how we handle your information.</p>
+
+            <h2 style={sh}>Drivers</h2>
+            <p style={p}>Drivers who sign up operate as independent contractors, not employees, of Ancillary LLC. Drivers are responsible for their own vehicles, insurance, licensing, and compliance with applicable laws.</p>
+
+            <h2 style={sh}>Limitation of Liability</h2>
+            <p style={p}>DELIVERme provides delivery services on a reasonable-effort basis. We are not liable for delays, merchant errors, or circumstances beyond our reasonable control. Our total liability for any claim is limited to the delivery fee paid for the affected order.</p>
+
+            <h2 style={sh}>Changes</h2>
+            <p style={p}>We may update these Terms from time to time. Continued use of DELIVERme after changes means you accept the updated Terms.</p>
+
+            <h2 style={sh}>Contact</h2>
+            <p style={p}>Questions? Reach us at support@deliverme-app.com.</p>
+          </div>
+        ) : (
+          <div>
+            <p style={{marginBottom:16}}>This Privacy Policy explains how DELIVERme, operated by Ancillary LLC ("we," "us"), collects and uses your information when you use our delivery service.</p>
+
+            <h2 style={sh}>Information We Collect</h2>
+            <p style={p}>We collect the information you provide when requesting a delivery or signing up as a driver, including your name, phone number, email, pickup and drop-off addresses, and (for drivers) vehicle and license details. We collect payment information through our secure payment processor; we do not store full card numbers ourselves.</p>
+
+            <h2 style={sh}>How We Use Your Information</h2>
+            <p style={p}>We use your information to arrange and complete deliveries, send you order and tracking updates, coordinate with drivers, process payments, and communicate with you about our service.</p>
+
+            <h2 style={sh}>Text Messaging</h2>
+            <p style={p}>If you provide your mobile number, we use it to send delivery-related text messages (order alerts, status, and tracking updates). Message frequency varies with your activity. Message and data rates may apply. Reply STOP to opt out or HELP for help. <strong>We do not sell or share your mobile number or messaging consent with third parties for their own marketing.</strong> Your information is used only to operate the DELIVERme service.</p>
+
+            <h2 style={sh}>How We Share Information</h2>
+            <p style={p}>We share information only as needed to provide the service — for example, sharing delivery details with the driver assigned to your order, or payment details with our payment processor. We do not sell your personal information.</p>
+
+            <h2 style={sh}>Data Security</h2>
+            <p style={p}>We take reasonable measures to protect your information. No system is perfectly secure, but we work to safeguard the data you share with us.</p>
+
+            <h2 style={sh}>Your Choices</h2>
+            <p style={p}>You may opt out of text messages at any time by replying STOP. You may request that we delete your information by contacting us.</p>
+
+            <h2 style={sh}>Contact</h2>
+            <p style={p}>Questions about your privacy? Email support@deliverme-app.com.</p>
+          </div>
+        )}
+
+        <div style={{marginTop:32,paddingTop:20,borderTop:"1px solid "+border,fontSize:13,color:muted}}>
+          {isTerms ? <span style={link} onClick={()=>navigate("privacy")}>View our Privacy Policy →</span> : <span style={link} onClick={()=>navigate("terms")}>View our Terms of Service →</span>}
+        </div>
+      </main>
+    </div>
+  );
+}
+const sh = {fontSize:16,fontWeight:800,marginTop:22,marginBottom:6,color:ink};
+const p = {marginBottom:12};
+const link = {color:rust,fontWeight:700,cursor:"pointer",textDecoration:"underline"};
+
 function PartnerPage({ navigate }) {
   return (
     <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",color:ink}}>
@@ -1434,6 +1523,7 @@ function RestaurantPortal({ restaurant, slug }) {
 
 function CustomerRequest({ navigate }) {
   const [form, setForm] = useState({ customerName:"", customerPhone:"", pickupName:"", pickupAddress:"", dropoffAddress:"", orderDetails:"", notes:"" });
+  const [smsConsent, setSmsConsent] = useState(false);
   const [dropoffTown, setDropoffTown] = useState(null); // selected town object {town,fee} or "__other__"
   const [pickupTown, setPickupTown] = useState(null); // selected pickup town object
   const [submitted, setSubmitted] = useState(false);
@@ -1589,7 +1679,13 @@ function CustomerRequest({ navigate }) {
               <div><p style={{fontWeight:700,fontSize:15}}>Delivery Fee</p><p style={{fontSize:12,color:muted}}>{(townSelected&&pickupTownSelected) ? pickupTown.town+" → "+dropoffTown.town : "Tap pickup & drop-off towns"}</p></div>
               <p style={{fontSize:22,fontWeight:900,color:rust}}>{(townSelected&&pickupTownSelected) ? "$"+deliveryFee.toFixed(2) : "—"}</p>
             </div>
-            <button onClick={submit} disabled={loading||!available||!townSelected||!pickupTownSelected||!form.customerName||!form.customerPhone||!pickupOk||!dropoffOk} style={{width:"100%",background:(!available||!townSelected||!pickupTownSelected||!form.customerName||!form.customerPhone||!pickupOk||!dropoffOk)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>{!available ? "Currently Offline" : isOutOfArea ? "Outside Service Area" : !form.customerName||!form.customerPhone ? "Enter Your Name & Phone" : !pickupOk ? "Enter Full Pickup Address" : !dropoffOk ? "Enter Full Drop-off Address" : !pickupTownSelected ? "Tap Pickup Town" : !townSelected ? "Tap Drop-off Town" : loading ? "Sending..." : "Request Delivery 🚗"}</button>
+            <div style={{background:cream,border:"1px solid "+border,borderRadius:8,padding:"12px 14px",marginBottom:14}}>
+              <label style={{display:"flex",gap:10,alignItems:"flex-start",cursor:"pointer"}}>
+                <input type="checkbox" checked={smsConsent} onChange={e=>setSmsConsent(e.target.checked)} style={{marginTop:3,width:18,height:18,flexShrink:0,cursor:"pointer"}}/>
+                <span style={{fontSize:12,color:ink,lineHeight:1.5}}>I agree to receive delivery-related text messages (order alerts, status, and tracking updates) from DELIVERme at the number provided. Message frequency varies. Message &amp; data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of purchase. See our <span style={{color:rust,fontWeight:700,textDecoration:"underline"}} onClick={(e)=>{e.preventDefault();navigate("privacy");}}>Privacy Policy</span> and <span style={{color:rust,fontWeight:700,textDecoration:"underline"}} onClick={(e)=>{e.preventDefault();navigate("terms");}}>Terms</span>.</span>
+              </label>
+            </div>
+            <button onClick={submit} disabled={loading||!available||!townSelected||!pickupTownSelected||!form.customerName||!form.customerPhone||!pickupOk||!dropoffOk||!smsConsent} style={{width:"100%",background:(!available||!townSelected||!pickupTownSelected||!form.customerName||!form.customerPhone||!pickupOk||!dropoffOk||!smsConsent)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>{!available ? "Currently Offline" : isOutOfArea ? "Outside Service Area" : !form.customerName||!form.customerPhone ? "Enter Your Name & Phone" : !pickupOk ? "Enter Full Pickup Address" : !dropoffOk ? "Enter Full Drop-off Address" : !pickupTownSelected ? "Tap Pickup Town" : !townSelected ? "Tap Drop-off Town" : !smsConsent ? "Please Agree to Text Updates" : loading ? "Sending..." : "Request Delivery 🚗"}</button>
           </div>
         </div>
       </main>
