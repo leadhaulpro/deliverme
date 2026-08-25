@@ -31,6 +31,7 @@ function getRoute() {
   if (hash === "dashboard") return { view: "dashboard" };
   if (hash === "request") return { view: "request" };
   if (hash === "drive") return { view: "drive" };
+  if (hash === "driver") return { view: "driver" };
   if (hash === "partner") return { view: "partner" };
   if (hash === "terms") return { view: "terms" };
   if (hash === "privacy") return { view: "privacy" };
@@ -101,6 +102,25 @@ const sb = {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
     });
     if (!res.ok) throw new Error("Failed to delete");
+  },
+  async updateDriver(id, updates) {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/drivers?id=eq."+id, {
+      method: "PATCH",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY, "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) throw new Error("Failed to update driver");
+    return res.json();
+  },
+  async claimOrder(orderId, driverId) {
+    // Claim guard: only succeeds if the order is still pending AND has no driver yet
+    const res = await fetch(SUPABASE_URL+"/rest/v1/orders?id=eq."+orderId+"&status=eq.pending&driver_id=is.null", {
+      method: "PATCH",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY, "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({ driver_id: driverId, status: "claimed" })
+    });
+    if (!res.ok) throw new Error("Failed to claim");
+    return res.json(); // empty array = someone else already claimed it
   },
   async getPickupLocations() {
     const res = await fetch(SUPABASE_URL+"/rest/v1/pickup_locations?order=name.asc", {
@@ -229,20 +249,21 @@ const DELIVERY_TOWNS = [
   { town: "Canaan", state: "CT", fee: 8 },
   { town: "North Canaan", state: "CT", fee: 8 },
   { town: "East Canaan", state: "CT", fee: 8 },
-  { town: "Falls Village", state: "CT", fee: 8 },
-  { town: "Salisbury", state: "CT", fee: 12 },
+  { town: "Falls Village", state: "CT", fee: 12 },
+  { town: "Salisbury", state: "CT", fee: 16 },
   { town: "Sheffield, MA", state: "MA", fee: 12 },
-  { town: "Norfolk", state: "CT", fee: 12 },
-  { town: "Lakeville", state: "CT", fee: 14 },
-  { town: "Sharon", state: "CT", fee: 14 },
-  { town: "Cornwall", state: "CT", fee: 16 },
-  { town: "Great Barrington, MA", state: "MA", fee: 16 },
-  { town: "Millerton, NY", state: "NY", fee: 16 },
+  { town: "New Marlborough, MA", state: "MA", fee: 12 },
+  { town: "Norfolk", state: "CT", fee: 16 },
+  { town: "Lakeville", state: "CT", fee: 16 },
+  { town: "Sharon", state: "CT", fee: 19 },
+  { town: "Cornwall", state: "CT", fee: 19 },
+  { town: "Great Barrington, MA", state: "MA", fee: 18 },
+  { town: "Millerton, NY", state: "NY", fee: 18 },
   { town: "Torrington", state: "CT", fee: 45 },
   { town: "Winsted", state: "CT", fee: 45 }
 ];
 // Canaan and its immediate cluster count as "base" — a pickup from base is a single trip.
-const BASE_TOWNS = ["Canaan","North Canaan","East Canaan","Falls Village"];
+const BASE_TOWNS = ["Canaan","North Canaan","East Canaan"];
 // Route-based fee calculator.
 // Rules: same town = that town's fee. Base pickup = drop-off town's fee.
 // Outside town -> different town (dual trip) = higher town's fee + half the lower town's fee.
@@ -320,6 +341,7 @@ function App() {
   }
   if (route.view === "request") return <CustomerRequest navigate={navigate}/>;
   if (route.view === "drive") return <DriverSignup navigate={navigate}/>;
+  if (route.view === "driver") return <DriverPortal navigate={navigate}/>;
   if (route.view === "partner") return <PartnerPage navigate={navigate}/>;
   if (route.view === "terms") return <LegalPage navigate={navigate} kind="terms"/>;
   if (route.view === "privacy") return <LegalPage navigate={navigate} kind="privacy"/>;
@@ -462,7 +484,7 @@ function LandingPage({ navigate }) {
           <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,marginBottom:8}}>Where We Deliver</h2>
           <p className="lp-fade lp-d1" style={{color:muted,fontSize:14,marginBottom:20}}>Serving Canaan and the surrounding towns:</p>
           <div className="lp-fade lp-d2" style={{display:"flex",flexWrap:"wrap",gap:10,justifyContent:"center"}}>
-            {["Canaan","North Canaan","East Canaan","Falls Village","Salisbury","Sheffield, MA","Lakeville","Norfolk","Sharon","Cornwall","Great Barrington, MA"].map(t=>(
+            {["Canaan","North Canaan","East Canaan","Falls Village","Salisbury","Sheffield, MA","New Marlborough, MA","Lakeville","Norfolk","Sharon","Cornwall","Great Barrington, MA"].map(t=>(
               <span key={t} style={{background:cream,border:"1px solid "+border,borderRadius:20,padding:"8px 16px",fontSize:13,fontWeight:600}}>{t}</span>
             ))}
           </div>
@@ -550,6 +572,167 @@ function PinEntry({ onSuccess }) {
           <button onClick={check} style={{width:"100%",background:rust,color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:600}}>Enter Dashboard</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DriverPortal({ navigate }) {
+  const [pin, setPin] = useState("");
+  const [driver, setDriver] = useState(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [tab, setTab] = useState("available");
+
+  // LOGIN
+  const login = async () => {
+    if (!pin) return;
+    setLoading(true); setError("");
+    try {
+      const drivers = await sb.getDrivers();
+      const match = drivers.find(d => d.pin && d.pin === pin.trim());
+      if (!match) { setError("Invalid PIN. Please check with DELIVERme."); setLoading(false); return; }
+      if (match.status === "suspended") { setError("Your account is currently under review / temporarily deactivated. Please email support@deliverme-app.com."); setLoading(false); return; }
+      if (match.status !== "active") { setError("Your application is still pending approval. We'll be in touch soon!"); setLoading(false); return; }
+      setDriver(match);
+    } catch(e) { setError("Login failed. Try again."); }
+    finally { setLoading(false); }
+  };
+
+  // Load orders
+  const loadOrders = async () => {
+    if (!driver) return;
+    try { const all = await sb.getOrders(); setOrders(all); } catch(e) {}
+  };
+  useEffect(() => {
+    if (!driver) return;
+    loadOrders();
+    const iv = setInterval(loadOrders, 15000); // refresh every 15s
+    return () => clearInterval(iv);
+  }, [driver]);
+
+  // Toggle availability
+  const toggleSignedOn = async () => {
+    try {
+      const [updated] = await sb.updateDriver(driver.id, { signed_on: !driver.signed_on });
+      setDriver(updated);
+    } catch(e) { alert("Could not update. Try again."); }
+  };
+
+  // Claim an order
+  const claim = async (orderId) => {
+    try {
+      const result = await sb.claimOrder(orderId, driver.id);
+      if (!result || result.length === 0) {
+        alert("That order was just claimed by another driver.");
+      }
+      await loadOrders();
+    } catch(e) { alert("Could not claim. Try again."); }
+  };
+
+  // Update order status (picked up / delivered)
+  const setStatus = async (orderId, status) => {
+    try { await sb.updateOrder(orderId, { status }); await loadOrders(); }
+    catch(e) { alert("Could not update status."); }
+  };
+
+  // ===== LOGIN SCREEN =====
+  if (!driver) {
+    return (
+      <div style={{fontFamily:"system-ui,sans-serif",background:ink,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:"white",borderRadius:14,padding:"36px 28px",maxWidth:360,width:"100%",textAlign:"center"}}>
+          <div style={{marginBottom:6}}><span style={{fontWeight:900,color:rust,fontSize:26}}>DELIVER</span><span style={{fontWeight:700,color:ink,fontSize:26}}>me</span></div>
+          <p style={{color:muted,fontSize:13,marginBottom:24,fontWeight:700,letterSpacing:".05em"}}>DRIVER SIGN IN</p>
+          <input type="tel" value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} placeholder="Enter your PIN" style={{width:"100%",padding:"14px",fontSize:18,textAlign:"center",letterSpacing:"0.2em",border:"2px solid "+border,borderRadius:8,marginBottom:14,outline:"none",boxSizing:"border-box"}}/>
+          {error && <p style={{color:"#DC3545",fontSize:13,marginBottom:14}}>{error}</p>}
+          <button onClick={login} disabled={loading||!pin} style={{width:"100%",background:(!pin)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:8,cursor:"pointer",fontWeight:700}}>{loading?"Signing in...":"Sign In"}</button>
+          <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer",marginTop:16}}>← Back to Home</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ===== DRIVER DASHBOARD =====
+  const available = orders.filter(o => o.status === "pending" && !o.driver_id);
+  const mine = orders.filter(o => o.driver_id === driver.id && (o.status === "claimed" || o.status === "picked_up"));
+  const myCompleted = orders.filter(o => o.driver_id === driver.id && o.status === "delivered");
+  const myEarnings = myCompleted.reduce((sum,o)=>sum + (Number(o.delivery_fee)||0)*0.78, 0);
+  const myGross = myCompleted.reduce((sum,o)=>sum + (Number(o.delivery_fee)||0), 0);
+
+  const orderCard = (o, showClaim, showStatus) => (
+    <div key={o.id} style={{background:"white",border:"1px solid "+border,borderRadius:10,padding:14,marginBottom:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+        <div style={{fontSize:13,fontWeight:700,color:ink}}>{o.restaurant_name||"Customer Request"}</div>
+        <div style={{fontSize:16,fontWeight:900,color:rust}}>${Number(o.delivery_fee).toFixed(2)}</div>
+      </div>
+      <div style={{fontSize:13,marginBottom:3}}><strong>{o.customer_name}</strong> · {o.customer_phone}</div>
+      {o.restaurant_address && <div style={{fontSize:13,color:muted,marginBottom:2}}>🟢 Pickup: <a href={`https://maps.apple.com/?daddr=${encodeURIComponent(o.restaurant_address)}`} style={{color:"#1F8A4C",textDecoration:"none",fontWeight:600}}>{o.restaurant_address}</a></div>}
+      <div style={{fontSize:13,color:muted,marginBottom:2}}>🔴 Drop-off: <a href={`https://maps.apple.com/?daddr=${encodeURIComponent(o.dropoff_address)}`} style={{color:rust,textDecoration:"none",fontWeight:600}}>{o.dropoff_address}</a></div>
+      {o.order_details && <div style={{fontSize:12,color:muted,marginTop:4}}>📦 {o.order_details}</div>}
+      <div style={{fontSize:12,color:"#1F8A4C",fontWeight:700,marginTop:6}}>You earn: ${(Number(o.delivery_fee)*0.78).toFixed(2)}</div>
+      {showClaim && <button onClick={()=>claim(o.id)} style={{width:"100%",marginTop:10,background:rust,color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700}}>✋ Claim This Order</button>}
+      {showStatus && o.status==="claimed" && <button onClick={()=>setStatus(o.id,"picked_up")} style={{width:"100%",marginTop:10,background:"#FF6B1A",color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700}}>📦 Mark Picked Up</button>}
+      {showStatus && o.status==="picked_up" && <button onClick={()=>setStatus(o.id,"delivered")} style={{width:"100%",marginTop:10,background:"#1F8A4C",color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700}}>✅ Mark Delivered</button>}
+    </div>
+  );
+
+  return (
+    <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh"}}>
+      <header style={{background:ink,color:"white",padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><span style={{fontWeight:900,color:"#E8927C",fontSize:17}}>DELIVER</span><span style={{fontWeight:700,fontSize:17}}>me</span><span style={{fontSize:12,opacity:.7,marginLeft:8}}>Driver</span></div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:13}}>Hi, {driver.name?.split(" ")[0]}</span>
+          <button onClick={()=>{setDriver(null);setPin("");}} style={{background:"none",border:"1px solid rgba(255,255,255,.3)",color:"white",fontSize:12,padding:"4px 10px",borderRadius:5,cursor:"pointer"}}>Sign Out</button>
+        </div>
+      </header>
+
+      {/* Availability toggle */}
+      <div style={{background:driver.signed_on?"#E8F5EC":"#FBEAEA",padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid "+border}}>
+        <div>
+          <div style={{fontSize:14,fontWeight:700,color:driver.signed_on?"#1F8A4C":"#DC3545"}}>{driver.signed_on?"🟢 You're Signed On":"⚪ You're Signed Off"}</div>
+          <div style={{fontSize:12,color:muted}}>{driver.signed_on?"You'll get new order alerts":"Sign on to receive orders"}</div>
+        </div>
+        <button onClick={toggleSignedOn} style={{background:driver.signed_on?"#DC3545":"#1F8A4C",color:"white",border:"none",padding:"10px 18px",fontSize:14,borderRadius:8,cursor:"pointer",fontWeight:700}}>{driver.signed_on?"Sign Off":"Sign On"}</button>
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",borderBottom:"1px solid "+border,background:"white"}}>
+        {[["available","Available ("+available.length+")"],["mine","My Deliveries ("+mine.length+")"],["earnings","Earnings"]].map(([k,label])=>(
+          <button key={k} onClick={()=>setTab(k)} style={{flex:1,padding:"12px 8px",background:tab===k?cream:"white",border:"none",borderBottom:tab===k?"2px solid "+rust:"2px solid transparent",color:tab===k?rust:muted,fontSize:13,fontWeight:700,cursor:"pointer"}}>{label}</button>
+        ))}
+      </div>
+
+      <main style={{padding:"16px 18px",maxWidth:560,margin:"0 auto"}}>
+        {tab==="available" && (
+          <div>
+            {!driver.signed_on && <div style={{background:"#FFF8E1",border:"1px solid #FFE082",borderRadius:8,padding:12,fontSize:13,color:"#8A6D00",marginBottom:14}}>You're signed off. Sign on above to start claiming orders.</div>}
+            {available.length===0 && <div style={{textAlign:"center",padding:"40px 20px",color:muted,fontSize:14}}>No orders available right now. New orders will appear here automatically.</div>}
+            {available.map(o=>orderCard(o, driver.signed_on, false))}
+          </div>
+        )}
+        {tab==="mine" && (
+          <div>
+            {mine.length===0 && <div style={{textAlign:"center",padding:"40px 20px",color:muted,fontSize:14}}>No active deliveries. Claim an order from the Available tab.</div>}
+            {mine.map(o=>orderCard(o, false, true))}
+          </div>
+        )}
+        {tab==="earnings" && (
+          <div>
+            <div style={{background:"white",border:"1px solid "+border,borderRadius:10,padding:20,textAlign:"center",marginBottom:14}}>
+              <div style={{fontSize:13,color:muted,marginBottom:4}}>Your Earnings ({myCompleted.length} deliveries)</div>
+              <div style={{fontSize:34,fontWeight:900,color:"#1F8A4C"}}>${myEarnings.toFixed(2)}</div>
+              <div style={{fontSize:12,color:muted,marginTop:4}}>You keep 78% · ${myGross.toFixed(2)} total fees collected</div>
+            </div>
+            <p style={{fontSize:12,color:muted,textAlign:"center"}}>Payouts are sent by DELIVERme. Questions? support@deliverme-app.com</p>
+            {myCompleted.slice(0,10).map(o=>(
+              <div key={o.id} style={{background:"white",border:"1px solid "+border,borderRadius:8,padding:12,marginTop:8,display:"flex",justifyContent:"space-between",fontSize:13}}>
+                <span>{o.dropoff_address?.split(",")[0]||"Delivery"}</span>
+                <span style={{fontWeight:700,color:"#1F8A4C"}}>+${(Number(o.delivery_fee)*0.78).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
     </div>
   );
 }
