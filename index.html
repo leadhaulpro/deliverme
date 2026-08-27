@@ -221,6 +221,34 @@ async function sendSMS(to, message) {
   } catch(e) {}
 }
 
+const OWNER_PHONE = "+19296908573";
+
+// Stage 5 dispatch: always alert owner; alert signed-on active drivers; if none on, message the customer.
+async function dispatchOrder({ ownerMessage, driverMessage, customerPhone, customerName }) {
+  // 1. Always notify the owner (guaranteed, regardless of driver sign-on status)
+  sendSMS(OWNER_PHONE, ownerMessage);
+
+  // 2. Find signed-on active drivers and alert them to claim
+  try {
+    const drivers = await sb.getDrivers();
+    const onDrivers = drivers.filter(d => d.status === "active" && d.signed_on && d.phone);
+    if (onDrivers.length > 0) {
+      onDrivers.forEach(d => {
+        // Don't double-text the owner if they're also signed on as a driver
+        if (d.phone.replace(/\D/g,"").slice(-10) !== OWNER_PHONE.replace(/\D/g,"").slice(-10)) {
+          sendSMS(d.phone, driverMessage);
+        }
+      });
+    } else {
+      // 3. No drivers signed on → send the customer a gracious patience message
+      if (customerPhone) {
+        sendSMS(customerPhone, "DELIVERme: Thanks for your delivery request"+(customerName?", "+customerName.split(" ")[0]:"")+"! We're growing our driver network and don't have a driver available this moment. We'll be in touch shortly to arrange your delivery. Thanks for your patience as we grow! 🚗");
+      }
+    }
+  } catch(e) {}
+}
+
+
 const RESTAURANTS = {
   "general": { name: "", address: "", defaultFee: "8.00", town: null },
   "stateline-pizza": { name: "Stateline Pizza", address: "340 N Elm St, Canaan, CT 06018", defaultFee: "8.00", town: "Canaan" },
@@ -1678,7 +1706,12 @@ function RestaurantPortal({ restaurant, slug }) {
       const order = { restaurant_name: form.restaurantName || restaurant.name, restaurant_address: form.restaurantAddress || restaurant.address, restaurant_slug: slug, customer_name:form.customerName, customer_phone:form.customerPhone, dropoff_address:fullDropoff, order_details:form.orderDetails, notes:form.notes, delivery_fee:routeFee, status:"pending", created_at:new Date().toISOString() };
       const [created] = await sb.createOrder(order);
       setOrderId(created.id);
-      sendSMS("+19296908573","🚗 New delivery from "+(form.restaurantName||restaurant.name)+"!\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nTo: "+dropTown.town+"\nDrop-off: "+fullDropoff+"\nFee: $"+routeFee);
+      dispatchOrder({
+        ownerMessage: "🚗 New delivery from "+(form.restaurantName||restaurant.name)+"!\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nTo: "+dropTown.town+"\nDrop-off: "+fullDropoff+"\nFee: $"+routeFee,
+        driverMessage: "🚗 New DELIVERme order!\n"+(form.restaurantName||restaurant.name)+" → "+dropTown.town+" · $"+routeFee+" (you earn $"+(routeFee*0.78).toFixed(2)+")\nOpen the app to claim: "+window.location.origin+"#driver",
+        customerPhone: form.customerPhone,
+        customerName: form.customerName
+      });
       setSubmitted(true);
     } catch(e) { alert("Error submitting. Please try again."); }
     finally { setLoading(false); }
@@ -1879,7 +1912,12 @@ function CustomerRequest({ navigate }) {
       const order = { restaurant_name: pickupDisplayName, restaurant_address: fullPickup, customer_name: form.customerName, customer_phone: form.customerPhone, dropoff_address: fullDropoff, order_details: form.orderDetails, notes: form.notes, delivery_fee: routeFee, status: "pending", created_at: new Date().toISOString() };
       const [created] = await sb.createOrder(order);
       setOrderId(created.id);
-      sendSMS("+19296908573","🚗 New customer request!\nFrom: "+(pickupDisplayName)+" ("+pickupTown.town+")\nPickup: "+fullPickup+"\nTo: "+dropoffTown.town+" ($"+routeFee+")\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+fullDropoff);
+      dispatchOrder({
+        ownerMessage: "🚗 New customer request!\nFrom: "+(pickupDisplayName)+" ("+pickupTown.town+")\nPickup: "+fullPickup+"\nTo: "+dropoffTown.town+" ($"+routeFee+")\nCustomer: "+form.customerName+" ("+form.customerPhone+")\nDrop-off: "+fullDropoff,
+        driverMessage: "🚗 New DELIVERme order!\n"+pickupTown.town+" → "+dropoffTown.town+" · $"+routeFee+" (you earn $"+(routeFee*0.78).toFixed(2)+")\nOpen the app to claim: "+window.location.origin+"#driver",
+        customerPhone: form.customerPhone,
+        customerName: form.customerName
+      });
       setSubmitted(true);
     } catch(e) { alert("Error submitting. Please try again."); }
     finally { setLoading(false); }
