@@ -223,7 +223,7 @@ async function sendSMS(to, message) {
 
 const OWNER_PHONE = "+19296908573";
 
-// Stage 5 dispatch: always alert owner; alert signed-on active drivers; if none on, message the customer.
+// Stage 5 dispatch: always alert owner; alert signed-on active drivers; if none on (and owner stepped out), message the customer.
 async function dispatchOrder({ ownerMessage, driverMessage, customerPhone, customerName }) {
   // 1. Always notify the owner (guaranteed, regardless of driver sign-on status)
   sendSMS(OWNER_PHONE, ownerMessage);
@@ -232,15 +232,17 @@ async function dispatchOrder({ ownerMessage, driverMessage, customerPhone, custo
   try {
     const drivers = await sb.getDrivers();
     const onDrivers = drivers.filter(d => d.status === "active" && d.signed_on && d.phone);
-    if (onDrivers.length > 0) {
-      onDrivers.forEach(d => {
-        // Don't double-text the owner if they're also signed on as a driver
-        if (d.phone.replace(/\D/g,"").slice(-10) !== OWNER_PHONE.replace(/\D/g,"").slice(-10)) {
-          sendSMS(d.phone, driverMessage);
-        }
-      });
-    } else {
-      // 3. No drivers signed on → send the customer a gracious patience message
+    onDrivers.forEach(d => {
+      if (d.phone.replace(/\D/g,"").slice(-10) !== OWNER_PHONE.replace(/\D/g,"").slice(-10)) {
+        sendSMS(d.phone, driverMessage);
+      }
+    });
+
+    // 3. The owner counts as a signed-on driver when "available" (logged in + toggled on).
+    // Only send the customer the patience message if NO drivers are on AND the owner has stepped out (unavailable).
+    let ownerAvailable = true;
+    try { ownerAvailable = await sb.getAvailability(); } catch(e) {}
+    if (onDrivers.length === 0 && !ownerAvailable) {
       if (customerPhone) {
         sendSMS(customerPhone, "DELIVERme: Thanks for your delivery request"+(customerName?", "+customerName.split(" ")[0]:"")+"! We're growing our driver network and don't have a driver available this moment. We'll be in touch shortly to arrange your delivery. Thanks for your patience as we grow! 🚗");
       }
@@ -356,6 +358,7 @@ const cream="#F9F5EE", ink="#1A1612", rust="#C0392B", muted="#7A7065", border="#
 function App() {
   const [route, setRoute] = useState(getRoute());
   const [authed, setAuthed] = useState(!!sessionStorage.getItem("dm_authed"));
+  const [loggedInDriver, setLoggedInDriver] = useState(null);
   useEffect(() => {
     const handler = () => setRoute(getRoute());
     window.addEventListener("hashchange", handler);
@@ -376,7 +379,8 @@ function App() {
   if (route.view === "track") return <TrackingPage navigate={navigate} initialOrderId={route.orderId || ""}/>;
   if (route.view === "home") return <LandingPage navigate={navigate}/>;
   if (route.view === "dashboard") {
-    if (!authed) return <PinEntry onSuccess={() => { sessionStorage.setItem("dm_authed","1"); setAuthed(true); }}/>;
+    if (loggedInDriver) return <DriverPortal navigate={navigate} preAuthedDriver={loggedInDriver}/>;
+    if (!authed) return <PinEntry onSuccess={() => { sessionStorage.setItem("dm_authed","1"); setAuthed(true); }} onDriverSuccess={(d) => { setLoggedInDriver(d); }}/>;
     return <Dashboard navigate={navigate}/>;
   }
   return <LandingPage navigate={navigate}/>;
@@ -576,12 +580,22 @@ function LandingPage({ navigate }) {
   );
 }
 
-function PinEntry({ onSuccess }) {
+function PinEntry({ onSuccess, onDriverSuccess }) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
-  const check = () => {
-    if (pin === DRIVER_PIN) { onSuccess(); }
-    else { setError(true); setPin(""); setTimeout(()=>setError(false),2000); }
+  const [checking, setChecking] = useState(false);
+  const check = async () => {
+    if (!pin) return;
+    if (pin === DRIVER_PIN) { onSuccess(); return; }   // master PIN → owner dashboard
+    // Otherwise check if it's an active driver's PIN → driver portal
+    setChecking(true);
+    try {
+      const drivers = await sb.getDrivers();
+      const match = drivers.find(d => d.pin && d.pin === pin.trim() && d.status === "active");
+      if (match) { onDriverSuccess(match); return; }
+    } catch(e) {}
+    setChecking(false);
+    setError(true); setPin(""); setTimeout(()=>setError(false),2000);
   };
   return (
     <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
@@ -593,20 +607,20 @@ function PinEntry({ onSuccess }) {
         </div>
         <div style={{background:"white",border:"1px solid "+border,borderRadius:8,padding:24}}>
           <p style={{fontSize:13,color:muted,marginBottom:16}}>Enter your PIN to continue</p>
-          <input type="password" inputMode="numeric" maxLength={4} value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&check()}
+          <input type="password" inputMode="numeric" value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&check()}
             style={{width:"100%",padding:"12px",fontSize:24,textAlign:"center",border:"1px solid "+(error?"#DC3545":border),borderRadius:6,background:cream,letterSpacing:8,outline:"none",marginBottom:12}}
             placeholder="····" autoFocus />
           {error && <p style={{color:"#DC3545",fontSize:13,marginBottom:12}}>Wrong PIN. Try again.</p>}
-          <button onClick={check} style={{width:"100%",background:rust,color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:600}}>Enter Dashboard</button>
+          <button onClick={check} disabled={checking} style={{width:"100%",background:rust,color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:600}}>{checking?"Checking...":"Enter"}</button>
         </div>
       </div>
     </div>
   );
 }
 
-function DriverPortal({ navigate }) {
+function DriverPortal({ navigate, preAuthedDriver }) {
   const [pin, setPin] = useState("");
-  const [driver, setDriver] = useState(null);
+  const [driver, setDriver] = useState(preAuthedDriver || null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState([]);
