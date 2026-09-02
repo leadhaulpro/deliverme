@@ -161,6 +161,22 @@ const sb = {
     });
     if (!res.ok) throw new Error("Failed");
   },
+  async getOwnerDriving() {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/app_settings?id=eq.1", {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
+    });
+    if (!res.ok) return true;
+    const data = await res.json();
+    return data[0] && data[0].owner_driving != null ? data[0].owner_driving : true;
+  },
+  async setOwnerDriving(on) {
+    const res = await fetch(SUPABASE_URL+"/rest/v1/app_settings?id=eq.1", {
+      method: "PATCH",
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ owner_driving: on, updated_at: new Date().toISOString() })
+    });
+    if (!res.ok) throw new Error("Failed");
+  },
   async getSettings() {
     const res = await fetch(SUPABASE_URL+"/rest/v1/app_settings?id=eq.1", {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer "+SUPABASE_ANON_KEY }
@@ -238,11 +254,11 @@ async function dispatchOrder({ ownerMessage, driverMessage, customerPhone, custo
       }
     });
 
-    // 3. The owner counts as a signed-on driver when "available" (logged in + toggled on).
-    // Only send the customer the patience message if NO drivers are on AND the owner has stepped out (unavailable).
-    let ownerAvailable = true;
-    try { ownerAvailable = await sb.getAvailability(); } catch(e) {}
-    if (onDrivers.length === 0 && !ownerAvailable) {
+    // 3. The owner counts as a signed-on driver when their "I'm Driving" toggle is on.
+    let ownerDriving = true;
+    try { ownerDriving = await sb.getOwnerDriving(); } catch(e) {}
+    // Only send the customer the patience message if NO drivers are on AND the owner has stepped out.
+    if (onDrivers.length === 0 && !ownerDriving) {
       if (customerPhone) {
         sendSMS(customerPhone, "DELIVERme: Thanks for your delivery request"+(customerName?", "+customerName.split(" ")[0]:"")+"! We're growing our driver network and don't have a driver available this moment. We'll be in touch shortly to arrange your delivery. Thanks for your patience as we grow! 🚗");
       }
@@ -866,6 +882,7 @@ function Dashboard({ navigate }) {
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [ratingOrder, setRatingOrder] = useState(null);
   const [available, setAvailable] = useState(true);
+  const [imDriving, setImDriving] = useState(true);
   const knownIds = useRef(new Set());
 
   const loadOrders = async () => {
@@ -886,6 +903,12 @@ function Dashboard({ navigate }) {
   }, []);
 
   useEffect(() => { sb.getAvailability().then(setAvailable).catch(()=>{}); }, []);
+  useEffect(() => { sb.getOwnerDriving().then(setImDriving).catch(()=>{}); }, []);
+  const toggleDriving = async () => {
+    const next = !imDriving;
+    setImDriving(next);
+    try { await sb.setOwnerDriving(next); } catch(e) { setImDriving(!next); alert("Could not update driving status."); }
+  };
 
   const toggleAvailable = async () => {
     const next = !available;
@@ -951,7 +974,8 @@ function Dashboard({ navigate }) {
           <span style={{fontSize:11,color:muted,marginLeft:8,textTransform:"uppercase",letterSpacing:".08em"}}>Dashboard</span>
         </div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
-          <button onClick={toggleAvailable} style={{padding:"6px 10px",fontSize:11,border:"none",background:available?"#27AE60":"#DC3545",color:"white",borderRadius:4,cursor:"pointer",fontWeight:700}}>{available ? "🟢 On" : "🔴 Off"}</button>
+          <button onClick={toggleDriving} title="Your personal driver availability" style={{padding:"6px 10px",fontSize:11,border:"2px solid "+(imDriving?"#1F8A4C":"#DC3545"),background:imDriving?"#E8F5EC":"#FBEAEA",color:imDriving?"#1F8A4C":"#DC3545",borderRadius:4,cursor:"pointer",fontWeight:700}}>{imDriving ? "🚗 Driving" : "🚗 Stepped Out"}</button>
+          <button onClick={toggleAvailable} title="Platform on/off (customer ordering)" style={{padding:"6px 10px",fontSize:11,border:"none",background:available?"#27AE60":"#DC3545",color:"white",borderRadius:4,cursor:"pointer",fontWeight:700}}>{available ? "🟢 On" : "🔴 Off"}</button>
           {!audioUnlocked ? (
             <button className="btn btn-red" style={{padding:"6px 10px",fontSize:11}} onClick={()=>{ unlockAudio(); playChime(); setAudioUnlocked(true); }}>🔔 On</button>
           ) : (
