@@ -967,7 +967,7 @@ function Dashboard({ navigate }) {
         @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
         .fade-in{animation:fadeIn .25s ease}
       `}</style>
-      <header style={{background:"white",borderBottom:"1px solid "+border,padding:"0 20px",height:52,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
+      <header style={{background:"white",borderBottom:"1px solid "+border,padding:"8px 14px",minHeight:52,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,position:"sticky",top:0,zIndex:100}}>
         <div>
           <span style={{fontWeight:900,color:rust,fontSize:18}}>DELIVER</span>
           <span style={{fontWeight:700,color:ink,fontSize:18}}>me</span>
@@ -988,7 +988,6 @@ function Dashboard({ navigate }) {
       <main style={{maxWidth:800,margin:"0 auto",padding:"20px 16px"}}>
         <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>
           <button onClick={()=>setTab("orders")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="orders"?ink:border),background:tab==="orders"?ink:"transparent",color:tab==="orders"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>Orders</button>
-          <button onClick={()=>setTab("restaurants")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="restaurants"?ink:border),background:tab==="restaurants"?ink:"transparent",color:tab==="restaurants"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>🏪 Restaurants</button>
           <button onClick={()=>setTab("ratings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="ratings"?ink:border),background:tab==="ratings"?ink:"transparent",color:tab==="ratings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>⭐ Ratings</button>
           <button onClick={()=>setTab("qr")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="qr"?ink:border),background:tab==="qr"?ink:"transparent",color:tab==="qr"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>📲 QR Code</button>
           <button onClick={()=>setTab("pickups")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="pickups"?ink:border),background:tab==="pickups"?ink:"transparent",color:tab==="pickups"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>📍 Pickup Spots</button>
@@ -996,30 +995,6 @@ function Dashboard({ navigate }) {
           <button onClick={()=>setTab("hours")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="hours"?ink:border),background:tab==="hours"?ink:"transparent",color:tab==="hours"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>🕒 Hours</button>
           <button onClick={()=>setTab("earnings")} style={{padding:"8px 18px",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",border:"1px solid "+(tab==="earnings"?ink:border),background:tab==="earnings"?ink:"transparent",color:tab==="earnings"?"white":muted,borderRadius:4,cursor:"pointer",fontWeight:600}}>💵 Earnings</button>
         </div>
-
-        {tab==="restaurants" && (
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            <p style={{fontSize:13,color:muted,marginBottom:4}}>Share these links with each restaurant. They bookmark it and use it every time they have a delivery.</p>
-            {Object.entries(RESTAURANTS).filter(([slug])=>slug!=="general").map(([slug, r])=>{
-              const link = window.location.origin+"/#restaurant/"+slug;
-              return (
-                <div key={slug} className="card">
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
-                    <div>
-                      <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{r.name}</div>
-                      <div style={{fontSize:12,color:muted,marginBottom:6}}>{r.address}</div>
-                      <div style={{fontSize:11,color:rust,wordBreak:"break-all"}}>{link}</div>
-                    </div>
-                    <button onClick={()=>{ navigator.clipboard.writeText(link).then(()=>alert("Link copied!")).catch(()=>alert(link)); }} style={{background:ink,color:"white",border:"none",padding:"8px 14px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap"}}>Copy Link</button>
-                  </div>
-                </div>
-              );
-            })}
-            <div className="card" style={{borderStyle:"dashed"}}>
-              <p style={{fontSize:13,color:muted,textAlign:"center"}}>Need to add a restaurant? Message your DELIVERme developer with the name and address!</p>
-            </div>
-          </div>
-        )}
 
         {tab==="orders" && <>
         <div style={{display:"flex",gap:8,marginBottom:14}}>
