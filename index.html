@@ -1191,10 +1191,17 @@ function DriversPanel() {
 
   const approve = async (d) => {
     if (activeCount >= 5) { alert("You already have 5 active drivers (the max). Suspend one before activating another."); return; }
-    const pin = prompt("Assign a PIN for "+(d.name||"this driver")+" (they'll use it to log in at deliverme-app.com/#driver):", "");
+    const pin = prompt("Assign a PIN for "+(d.name||"this driver")+" (they'll use it to sign in on the DELIVERme home page):", "");
     if (pin===null) return;
     if (!pin.trim()) { alert("PIN cannot be empty."); return; }
-    try { await sb.updateDriver(d.id, { status:"active", pin:pin.trim(), signed_on:false }); await load(); }
+    try {
+      await sb.updateDriver(d.id, { status:"active", pin:pin.trim(), signed_on:false });
+      // Auto-text the driver their welcome + PIN
+      if (d.phone) {
+        sendSMS(d.phone, "Welcome to the DELIVERme driver team"+(d.name?", "+d.name.split(" ")[0]:"")+"! You're approved. Your login PIN is "+pin.trim()+". Sign in with the Driver Login button at "+window.location.origin+" to start taking deliveries. Please keep your PIN private. Questions? support@deliverme-app.com");
+      }
+      await load();
+    }
     catch(e){ alert("Could not approve."); }
   };
 
@@ -1214,7 +1221,13 @@ function DriversPanel() {
     const pin = prompt("Set a new PIN for "+(d.name||"this driver")+":", d.pin||"");
     if (pin===null) return;
     if (!pin.trim()) { alert("PIN cannot be empty."); return; }
-    try { await sb.updateDriver(d.id, { pin:pin.trim() }); await load(); }
+    try {
+      await sb.updateDriver(d.id, { pin:pin.trim() });
+      if (d.phone) {
+        sendSMS(d.phone, "DELIVERme: Your driver login PIN has been updated to "+pin.trim()+". Sign in with the Driver Login button at "+window.location.origin+". Keep your PIN private.");
+      }
+      await load();
+    }
     catch(e){ alert("Could not reset PIN."); }
   };
 
