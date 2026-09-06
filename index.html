@@ -23,6 +23,165 @@ const SUPABASE_URL = "https://lbvbvxbrebornbluvywj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxidmJ2eGJyZWJvcm5ibHV2eXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTQ3NjYsImV4cCI6MjA5NjA5MDc2Nn0.RqJyPJQyK7Uwvq3WmO6VXyx1Vk2dHEzooYkdaFhkxJQ";
 const DRIVER_PIN = "1234";
 
+// ===== LANGUAGE SYSTEM (English / Spanish) =====
+const LANG = { current: (typeof localStorage!=="undefined" && localStorage.getItem("dm_lang")) || "en" };
+const TR = {
+  // Driver login
+  "driver_access": { en: "Driver Access", es: "Acceso de Conductor" },
+  "driver_signin": { en: "DRIVER SIGN IN", es: "INICIO DE SESIÓN" },
+  "enter_pin": { en: "Enter your PIN to continue", es: "Ingrese su PIN para continuar" },
+  "sign_in": { en: "Sign In", es: "Iniciar Sesión" },
+  "signing_in": { en: "Signing in...", es: "Iniciando..." },
+  "enter": { en: "Enter", es: "Entrar" },
+  "checking": { en: "Checking...", es: "Verificando..." },
+  "wrong_pin": { en: "Wrong PIN. Try again.", es: "PIN incorrecto. Intente de nuevo." },
+  "invalid_pin": { en: "Invalid PIN. Please check with DELIVERme.", es: "PIN inválido. Consulte con DELIVERme." },
+  "pending_approval": { en: "Your application is still pending approval. We'll be in touch soon!", es: "Su solicitud está pendiente de aprobación. ¡Nos comunicaremos pronto!" },
+  "suspended_msg": { en: "Your account is currently under review / temporarily deactivated. Please email support@deliverme-app.com.", es: "Su cuenta está en revisión / desactivada temporalmente. Escriba a support@deliverme-app.com." },
+  "back_home": { en: "← Back to Home", es: "← Volver al Inicio" },
+  // Driver portal
+  "hi": { en: "Hi", es: "Hola" },
+  "sign_out": { en: "Sign Out", es: "Cerrar Sesión" },
+  "youre_signed_on": { en: "You're Signed On", es: "Estás Disponible" },
+  "youre_signed_off": { en: "You're Signed Off", es: "Estás No Disponible" },
+  "get_alerts": { en: "You'll get new order alerts", es: "Recibirás alertas de nuevos pedidos" },
+  "signon_to_receive": { en: "Sign on to receive orders", es: "Conéctate para recibir pedidos" },
+  "sign_on": { en: "Sign On", es: "Conectarse" },
+  "sign_off": { en: "Sign Off", es: "Desconectarse" },
+  "available": { en: "Available", es: "Disponibles" },
+  "my_deliveries": { en: "My Deliveries", es: "Mis Entregas" },
+  "earnings": { en: "Earnings", es: "Ganancias" },
+  "signed_off_notice": { en: "You're signed off. Sign on above to start claiming orders.", es: "Estás desconectado. Conéctate arriba para reclamar pedidos." },
+  "no_orders_available": { en: "No orders available right now. New orders will appear here automatically.", es: "No hay pedidos disponibles ahora. Los nuevos pedidos aparecerán aquí automáticamente." },
+  "no_active_deliveries": { en: "No active deliveries. Claim an order from the Available tab.", es: "No hay entregas activas. Reclama un pedido en la pestaña Disponibles." },
+  "customer_request": { en: "Customer Request", es: "Pedido de Cliente" },
+  "pickup": { en: "Pickup", es: "Recoger" },
+  "dropoff": { en: "Drop-off", es: "Entregar" },
+  "you_earn": { en: "You earn", es: "Ganas" },
+  "claim_order": { en: "✋ Claim This Order", es: "✋ Reclamar Este Pedido" },
+  "mark_picked_up": { en: "📦 Mark Picked Up", es: "📦 Marcar Recogido" },
+  "mark_delivered": { en: "✅ Mark Delivered", es: "✅ Marcar Entregado" },
+  "just_claimed": { en: "That order was just claimed by another driver.", es: "Ese pedido acaba de ser reclamado por otro conductor." },
+  "could_not_claim": { en: "Could not claim. Try again.", es: "No se pudo reclamar. Intente de nuevo." },
+  "could_not_update": { en: "Could not update status.", es: "No se pudo actualizar el estado." },
+  "your_earnings": { en: "Your Earnings", es: "Tus Ganancias" },
+  "deliveries": { en: "deliveries", es: "entregas" },
+  "you_keep_78": { en: "You keep 78%", es: "Te quedas con 78%" },
+  "total_fees_collected": { en: "total fees collected", es: "en tarifas cobradas" },
+  "payouts_note": { en: "Payouts are sent by DELIVERme. Questions? support@deliverme-app.com", es: "Los pagos los envía DELIVERme. ¿Preguntas? support@deliverme-app.com" },
+  "delivery": { en: "Delivery", es: "Entrega" },
+  // Customer request
+  "request_sent": { en: "Request Sent!", es: "¡Pedido Enviado!" },
+  "driver_notified": { en: "Your driver has been notified and will confirm shortly.", es: "Tu conductor ha sido notificado y confirmará en breve." },
+  "your_order_id": { en: "Your Order ID", es: "Tu Número de Pedido" },
+  "save_to_track": { en: "Save this to track your delivery", es: "Guárdalo para rastrear tu entrega" },
+  "track_my_order": { en: "📍 Track My Order", es: "📍 Rastrear Mi Pedido" },
+  "new_request": { en: "New Request", es: "Nuevo Pedido" },
+  "request_a_delivery": { en: "Request a Delivery", es: "Solicitar una Entrega" },
+  "req_subtitle": { en: "Already ordered? We'll pick it up and bring it to you.", es: "¿Ya hiciste tu pedido? Lo recogemos y te lo llevamos." },
+  "not_accepting": { en: ""+t("not_accepting")+"", es: "No estamos aceptando pedidos en este momento. ¡Vuelve pronto!" },
+  "your_info": { en: "Your Info", es: "Tu Información" },
+  "your_name": { en: "Your Name", es: "Tu Nombre" },
+  "your_phone": { en: "Your Phone", es: "Tu Teléfono" },
+  "pickup_location": { en: "Pickup Location", es: "Lugar de Recogida" },
+  "pickup_place": { en: "Pickup Place", es: "Lugar de Recogida" },
+  "select_pickup_spot": { en: "Select a pickup spot...", es: "Selecciona un lugar de recogida..." },
+  "other_type_it": { en: "Other (not listed — I'll type it)", es: "Otro (no está en la lista — lo escribiré)" },
+  "place_name": { en: "Place Name", es: "Nombre del Lugar" },
+  "pickup_address": { en: "Pickup Address", es: "Dirección de Recogida" },
+  "enter_full_address": { en: "Please enter a full street address, including the number.", es: "Ingresa una dirección completa, incluyendo el número." },
+  "delivery_details": { en: "Delivery Details", es: "Detalles de la Entrega" },
+  "dropoff_address": { en: "Drop-off Address", es: "Dirección de Entrega" },
+  "tap_your_town": { en: "Tap Your Town for Delivery", es: "Toca Tu Pueblo para la Entrega" },
+  "tap_pickup_town": { en: "Tap the Pickup Town", es: "Toca el Pueblo de Recogida" },
+  "which_town_pickup": { en: "Which town are we picking up from? Your fee is based on the distance between pickup and drop-off.", es: "¿De qué pueblo recogemos? Tu tarifa se basa en la distancia entre la recogida y la entrega." },
+  "what_did_you_order": { en: "What did you order?", es: "¿Qué pediste?" },
+  "notes_label": { en: "Notes", es: "Notas" },
+  "delivery_fee_label": { en: "Delivery Fee", es: "Tarifa de Entrega" },
+  "optional": { en: "Optional", es: "Opcional" },
+  "privacy_policy": { en: "Privacy Policy", es: "Política de Privacidad" },
+  "terms": { en: "Terms", es: "Términos" },
+  "request_delivery_btn": { en: "Request Delivery 🚗", es: "Solicitar Entrega 🚗" },
+  "sending": { en: "Sending...", es: "Enviando..." },
+  "currently_offline": { en: "Currently Offline", es: "Fuera de Servicio" },
+  "outside_area": { en: "Outside Service Area", es: "Fuera del Área de Servicio" },
+  "enter_name_phone": { en: "Enter Your Name & Phone", es: "Ingresa Tu Nombre y Teléfono" },
+  "enter_full_pickup": { en: "Enter Full Pickup Address", es: "Ingresa la Dirección de Recogida" },
+  "enter_full_dropoff": { en: "Enter Full Drop-off Address", es: "Ingresa la Dirección de Entrega" },
+  "tap_pickup_town_btn": { en: "Tap Pickup Town", es: "Toca el Pueblo de Recogida" },
+  "tap_dropoff_town_btn": { en: "Tap Drop-off Town", es: "Toca el Pueblo de Entrega" },
+  "home_short": { en: "← Home", es: "← Inicio" },
+  "error_submitting": { en: "Error submitting. Please try again.", es: "Error al enviar. Por favor intenta de nuevo." },
+  "consent_text": { en: "(Optional) I agree to receive recurring delivery-related text messages (order alerts, status, and tracking updates) from DELIVERme at the number provided. Message frequency varies. Message and data rates may apply. Reply STOP to unsubscribe, HELP for help. Consent is not a condition of purchase — you can still request a delivery without checking this box.", es: "(Opcional) Acepto recibir mensajes de texto recurrentes sobre la entrega (alertas de pedido, estado y seguimiento) de DELIVERme al número proporcionado. La frecuencia de mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responde STOP para cancelar, HELP para ayuda. El consentimiento no es condición de compra — puedes solicitar una entrega sin marcar esta casilla." },
+  "see_our": { en: "See our", es: "Consulta nuestra" },
+  "and_word": { en: "and", es: "y" },
+  // Landing page
+  "lp_offline": { en: "Outside these hours we're offline — check back soon!", es: "Fuera de este horario estamos cerrados — ¡vuelve pronto!" },
+  "lp_location": { en: "Canaan · Litchfield County, CT", es: "Canaan · Litchfield County, CT" },
+  "lp_services": { en: "Food · Supply House · Groceries · Pharmacy & More", es: "Comida · Suministros · Víveres · Farmacia y Más" },
+  "driver_login": { en: "Driver Login", es: "Acceso Conductor" },
+  "lp_hero_sub": { en: "See how easy it is to get what you need, delivered.", es: "Descubre lo fácil que es recibir lo que necesitas, a domicilio." },
+  "lp_how_it_works": { en: "How It Works", es: "Cómo Funciona" },
+  "lp_how1": { en: "Your favorite local spot sends us your order, we pick it up, and bring it to your door. Track it the whole way.", es: "Tu lugar local favorito nos envía tu pedido, lo recogemos y te lo llevamos a la puerta. Rastréalo todo el camino." },
+  "lp_how2": { en: "Already ordered somewhere — a restaurant, the pharmacy, a store? Just send us a request with the pickup and drop-off, and we handle the rest.", es: "¿Ya pediste en algún lugar — un restaurante, la farmacia, una tienda? Envíanos una solicitud con la recogida y la entrega, y nosotros nos encargamos del resto." },
+  "lp_how3": { en: "Earn money delivering in your own community, on your own schedule. Apply in minutes.", es: "Gana dinero haciendo entregas en tu propia comunidad, en tu propio horario. Aplica en minutos." },
+  "lp_where": { en: "Where We Deliver", es: "Dónde Entregamos" },
+  "lp_serving": { en: "Serving Canaan and the surrounding towns:", es: "Sirviendo a Canaan y los pueblos cercanos:" },
+  "lp_no_town": { en: "Don't see your town? Send a request anyway — we're always expanding.", es: "¿No ves tu pueblo? Envía una solicitud de todos modos — siempre estamos creciendo." },
+  "lp_faq": { en: "Common Questions", es: "Preguntas Frecuentes" },
+  "lp_ready": { en: "Ready when you are", es: "Listos cuando tú lo estés" },
+  "lp_ready_sub": { en: "Get your delivery started in under a minute.", es: "Comienza tu entrega en menos de un minuto." },
+  "lp_spread": { en: "Love the idea? Spread the word 💬", es: "¿Te gusta la idea? Corre la voz 💬" },
+  "lp_footer_tag": { en: "Delivery for small town living · Canaan, CT", es: "Entregas para la vida de pueblo · Canaan, CT" },
+  "lp_questions": { en: "Questions?", es: "¿Preguntas?" },
+  "terms_of_service": { en: "Terms of Service", es: "Términos de Servicio" },
+  "lp_b1_t": { en: t("lp_b1_t"), es: "Verdaderamente local" },
+  "lp_b1_d": { en: t("lp_b1_d"), es: "Somos tus vecinos — aquí mismo en Canaan, sirviendo a los pueblos que las grandes apps olvidan." },
+  "lp_b2_t": { en: t("lp_b2_t"), es: "Cobertura confiable" },
+  "lp_b2_d": { en: t("lp_b2_d"), es: "Cuando Uber Eats y DoorDash no tienen conductores, nosotros llegamos. Ese es el punto." },
+  "lp_b3_t": { en: t("lp_b3_t"), es: "Sin comisiones a restaurantes" },
+  "lp_b3_d": { en: t("lp_b3_d"), es: "No le quitamos una parte a los restaurantes locales como las grandes plataformas — así ellos ganan más." },
+  "lp_b4_t": { en: t("lp_b4_t"), es: "Cualquier cosa, en toda la zona" },
+  "lp_b4_d": { en: t("lp_b4_d"), es: "No solo comida. Farmacia, compras en tiendas, mandados — si está en nuestra zona, lo recogemos." },
+  "faq_q1": { en: t("faq_q1"), es: "¿Cómo pago?" },
+  "faq_a1": { en: t("faq_a1"), es: "Paga de forma segura con tarjeta o Apple Pay en la app, o en efectivo al recibir — tú eliges." },
+  "faq_q2": { en: t("faq_q2"), es: "¿Cuánto tarda la entrega?" },
+  "faq_a2": { en: t("faq_a2"), es: "Depende de la distancia y el lugar de recogida, pero como somos locales, a menudo somos más rápidos que las grandes apps en nuestra zona." },
+  "faq_q3": { en: t("faq_q3"), es: "¿Qué pueden recoger?" },
+  "faq_a3": { en: t("faq_a3"), es: "Comida de restaurantes, artículos de farmacia, productos de tiendas y mandados locales. Si está en nuestra área de servicio, solo pregunta." },
+  "faq_q4": { en: t("faq_q4"), es: "¿Cómo rastreo mi pedido?" },
+  "faq_a4": { en: t("faq_a4"), es: "Después de hacer tu solicitud, recibes un número de pedido y un enlace de rastreo para que siempre sepas dónde está tu entrega." },
+  "req_delivery_cta": { en: "🛵 Request a Delivery", es: "🛵 Solicitar una Entrega" },
+  "drive_with_us": { en: "🚗 Drive With Us", es: "🚗 Conduce con Nosotros" },
+  // Tracking page
+  "track_title": { en: "Track Your Order", es: "Rastrea Tu Pedido" },
+  "track_enter_id": { en: "Enter your Order ID", es: "Ingresa tu número de pedido" },
+  "track_btn": { en: "Track Order", es: "Rastrear Pedido" },
+  "track_not_found": { en: "Order not found. Please check your Order ID.", es: "Pedido no encontrado. Verifica tu número de pedido." },
+  "track_status": { en: "Status", es: "Estado" },
+  "st_pending": { en: "Pending — finding your driver", es: "Pendiente — buscando tu conductor" },
+  "st_claimed": { en: "Driver assigned — heading to pickup", es: "Conductor asignado — en camino a recoger" },
+  "st_picked_up": { en: "Picked up — on the way to you", es: "Recogido — en camino hacia ti" },
+  "st_delivered": { en: "Delivered ✓", es: "Entregado ✓" },
+  "st_cancelled": { en: "Cancelled", es: "Cancelado" },
+  "track_your_delivery": { en: "Track Your Delivery", es: "Rastrea Tu Entrega" },
+  "order_id_label": { en: "Order ID", es: "Número de Pedido" },
+  "track_enter_placeholder": { en: "Enter your order ID", es: "Ingresa tu número de pedido" },
+  "track_short": { en: "Track", es: "Rastrear" },
+  "track_not_found2": { en: "Order not found. Double-check your Order ID.", es: "Pedido no encontrado. Verifica tu número de pedido." },
+  "step_received": { en: "Order Received", es: "Pedido Recibido" },
+  "step_accepted": { en: "Driver Accepted", es: "Conductor Aceptó" },
+  "step_picked": { en: "Picked Up", es: "Recogido" },
+  "step_ontheway": { en: "On The Way", es: "En Camino" },
+  "step_delivered": { en: "Delivered", es: "Entregado" },
+  "track_to": { en: "To", es: "Para" },
+  "track_for": { en: "For", es: "Cliente" },
+  "track_delivery_fee": { en: "Delivery fee", es: "Tarifa de entrega" },
+};
+function t(key){ const e=TR[key]; return e ? (e[LANG.current]||e.en) : key; }
+function setLang(l){ LANG.current=l; try{localStorage.setItem("dm_lang",l);}catch(e){} }
+
+
 function getRoute() {
   const hash = window.location.hash.replace("#","");
   if (hash.startsWith("restaurant/")) return { view: "restaurant", slug: hash.replace("restaurant/","") };
@@ -404,6 +563,8 @@ function App() {
 
 function LandingPage({ navigate }) {
   const [settings, setSettings] = useState({});
+  const [lang, setLangState] = useState(LANG.current);
+  const switchLang = () => { const n = LANG.current==="en"?"es":"en"; setLang(n); setLangState(n); };
   useEffect(() => { sb.getSettings().then(setSettings).catch(()=>{}); }, []);
   useEffect(() => {
     const els = document.querySelectorAll(".reveal");
@@ -438,11 +599,14 @@ function LandingPage({ navigate }) {
       {/* Hero */}
       <section style={{background:"linear-gradient(160deg,#FFFFFF 0%,"+cream+" 100%)",padding:"48px 20px 40px",textAlign:"center",borderBottom:"1px solid "+border}}>
         <div style={{maxWidth:520,margin:"0 auto"}}>
+          <div style={{textAlign:"right",marginBottom:8}}>
+            <button onClick={switchLang} style={{background:"none",border:"1px solid "+border,borderRadius:6,padding:"5px 12px",fontSize:12,cursor:"pointer",color:ink,fontWeight:600}}>{lang==="en"?"🌐 Español":"🌐 English"}</button>
+          </div>
           {(settings.announce_line || settings.schedule_line) && (
             <div className="lp-fade" style={{background:rust,color:"white",borderRadius:10,padding:"12px 16px",marginBottom:24}}>
               {settings.announce_line && <div style={{fontSize:14,fontWeight:800,letterSpacing:".01em"}}>🎉 {settings.announce_line}</div>}
               {settings.schedule_line && <div style={{fontSize:13,fontWeight:600,marginTop:settings.announce_line?5:0,opacity:.95}}>🕒 {settings.schedule_line}</div>}
-              <div style={{fontSize:11,marginTop:6,opacity:.8}}>Outside these hours we're offline — check back soon!</div>
+              <div style={{fontSize:11,marginTop:6,opacity:.8}}>{t("lp_offline")}</div>
             </div>
           )}
           <div className="lp-fade lp-d1" style={{marginBottom:24}}>
@@ -450,15 +614,15 @@ function LandingPage({ navigate }) {
             <span style={{fontSize:42,fontWeight:700,color:ink}}>me</span>
             <p style={{color:ink,fontSize:17,marginTop:12,fontWeight:800,letterSpacing:".02em"}}>DELIVERY FOR SMALL TOWN LIVING</p>
             <p style={{color:muted,fontSize:13,marginTop:6,letterSpacing:".05em"}}>Canaan · Litchfield County, CT</p>
-            <p style={{color:ink,fontSize:12,marginTop:10,fontWeight:800,letterSpacing:".03em",textTransform:"uppercase"}}>Food · Supply House · Groceries · Pharmacy &amp; More</p>
+            <p style={{color:ink,fontSize:12,marginTop:10,fontWeight:800,letterSpacing:".03em",textTransform:"uppercase"}}>{t("lp_services")}</p>
           </div>
           <div className="lp-fade lp-d2" style={{display:"flex",flexDirection:"column",gap:12,maxWidth:360,margin:"0 auto"}}>
-            <button className="lp-btn" onClick={()=>navigate("request")} style={{background:rust,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:8,cursor:"pointer",fontWeight:700}}>🛵 Request a Delivery</button>
-            <button className="lp-btn" onClick={()=>navigate("track")} style={{background:ink,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:8,cursor:"pointer",fontWeight:600}}>📍 Track My Order</button>
+            <button className="lp-btn" onClick={()=>navigate("request")} style={{background:rust,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:8,cursor:"pointer",fontWeight:700}}>{t("req_delivery_cta")}</button>
+            <button className="lp-btn" onClick={()=>navigate("track")} style={{background:ink,color:"white",border:"none",padding:"16px 24px",fontSize:15,borderRadius:8,cursor:"pointer",fontWeight:600}}>{t("track_my_order")}</button>
             <button className="lp-btn" onClick={()=>navigate("partner")} style={{background:"none",color:ink,border:"2px solid "+ink,padding:"14px 24px",fontSize:14,borderRadius:8,cursor:"pointer",fontWeight:700}}>🤝 Partner With Us</button>
             <div style={{display:"flex",gap:10}}>
-              <button className="lp-btn" onClick={()=>navigate("drive")} style={{flex:1,background:"none",color:rust,border:"1px solid "+rust,padding:"12px",fontSize:13,borderRadius:8,cursor:"pointer",fontWeight:600}}>🚗 Drive With Us</button>
-              <button className="lp-btn" onClick={()=>navigate("dashboard")} style={{flex:1,background:"none",color:muted,border:"1px solid "+border,padding:"12px",fontSize:13,borderRadius:8,cursor:"pointer"}}>Driver Login</button>
+              <button className="lp-btn" onClick={()=>navigate("drive")} style={{flex:1,background:"none",color:rust,border:"1px solid "+rust,padding:"12px",fontSize:13,borderRadius:8,cursor:"pointer",fontWeight:600}}>{t("drive_with_us")}</button>
+              <button className="lp-btn" onClick={()=>navigate("dashboard")} style={{flex:1,background:"none",color:muted,border:"1px solid "+border,padding:"12px",fontSize:13,borderRadius:8,cursor:"pointer"}}>{t("driver_login")}</button>
             </div>
           </div>
         </div>
@@ -468,7 +632,7 @@ function LandingPage({ navigate }) {
       <section style={{padding:"40px 20px",textAlign:"center"}}>
         <div style={{maxWidth:560,margin:"0 auto"}}>
           <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,marginBottom:6}}>Welcome to DELIVERme</h2>
-          <p className="lp-fade lp-d1" style={{color:muted,fontSize:14,marginBottom:20}}>See how easy it is to get what you need, delivered.</p>
+          <p className="lp-fade lp-d1" style={{color:muted,fontSize:14,marginBottom:20}}>{t("lp_hero_sub")}</p>
           <div className="lp-fade lp-d2" style={{display:"flex",justifyContent:"center"}}>
             <div style={{position:"relative",width:"100%",maxWidth:300,aspectRatio:"9/16",background:ink,borderRadius:18,overflow:"hidden",border:"4px solid "+ink,boxShadow:"0 12px 36px rgba(0,0,0,.18)"}}>
               <iframe
@@ -486,20 +650,20 @@ function LandingPage({ navigate }) {
       {/* How it works */}
       <section style={{padding:"20px 20px 40px",background:"white",borderTop:"1px solid "+border,borderBottom:"1px solid "+border}}>
         <div className="reveal" style={{maxWidth:760,margin:"0 auto"}}>
-          <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,textAlign:"center",marginBottom:8}}>How It Works</h2>
+          <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,textAlign:"center",marginBottom:8}}>{t("lp_how_it_works")}</h2>
           <p className="lp-fade lp-d1" style={{color:muted,fontSize:14,textAlign:"center",marginBottom:28}}>Three easy ways to use DELIVERme.</p>
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
             <div className="lp-fade lp-d1 lp-card" style={{background:cream,border:"1px solid "+border,borderRadius:10,padding:20}}>
               <div style={{fontSize:13,fontWeight:800,color:rust,letterSpacing:".08em",textTransform:"uppercase",marginBottom:10}}>🍔 Order from a restaurant</div>
-              <p style={{fontSize:14,color:ink,lineHeight:1.6}}>Your favorite local spot sends us your order, we pick it up, and bring it to your door. Track it the whole way.</p>
+              <p style={{fontSize:14,color:ink,lineHeight:1.6}}>{t("lp_how1")}</p>
             </div>
             <div className="lp-fade lp-d2 lp-card" style={{background:cream,border:"1px solid "+border,borderRadius:10,padding:20}}>
               <div style={{fontSize:13,fontWeight:800,color:rust,letterSpacing:".08em",textTransform:"uppercase",marginBottom:10}}>🛍️ Need something picked up?</div>
-              <p style={{fontSize:14,color:ink,lineHeight:1.6}}>Already ordered somewhere — a restaurant, the pharmacy, a store? Just send us a request with the pickup and drop-off, and we handle the rest.</p>
+              <p style={{fontSize:14,color:ink,lineHeight:1.6}}>{t("lp_how2")}</p>
             </div>
             <div className="lp-fade lp-d3 lp-card" style={{background:cream,border:"1px solid "+border,borderRadius:10,padding:20}}>
               <div style={{fontSize:13,fontWeight:800,color:rust,letterSpacing:".08em",textTransform:"uppercase",marginBottom:10}}>🚗 Want to drive?</div>
-              <p style={{fontSize:14,color:ink,lineHeight:1.6}}>Earn money delivering in your own community, on your own schedule. Apply in minutes.</p>
+              <p style={{fontSize:14,color:ink,lineHeight:1.6}}>{t("lp_how3")}</p>
             </div>
           </div>
         </div>
@@ -511,10 +675,10 @@ function LandingPage({ navigate }) {
           <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,textAlign:"center",marginBottom:28}}>Why DELIVERme</h2>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16}}>
             {[
-              {icon:"🏡",title:"Truly local",text:"We're your neighbors — based right here in Canaan, serving the towns the big apps forget."},
-              {icon:"✅",title:"Reliable coverage",text:"When Uber Eats and DoorDash show no drivers, we show up. That's the whole point."},
-              {icon:"🤝",title:"No restaurant commissions",text:"We don't take a cut from local restaurants like the big platforms do — so they keep more."},
-              {icon:"📍",title:"Anything, anywhere local",text:"Not just food. Pharmacy runs, store pickups, errands — if it's in our area, we can grab it."},
+              {icon:"🏡",title:t("lp_b1_t"),text:t("lp_b1_d")},
+              {icon:"✅",title:t("lp_b2_t"),text:t("lp_b2_d")},
+              {icon:"🤝",title:t("lp_b3_t"),text:t("lp_b3_d")},
+              {icon:"📍",title:t("lp_b4_t"),text:t("lp_b4_d")},
             ].map((b,i)=>(
               <div key={b.title} className={"lp-fade lp-card lp-d"+((i%4)+1)} style={{background:"white",border:"1px solid "+border,borderRadius:10,padding:20}}>
                 <div style={{fontSize:30,marginBottom:10}}>{b.icon}</div>
@@ -529,27 +693,27 @@ function LandingPage({ navigate }) {
       {/* Service area */}
       <section style={{padding:"40px 20px",background:"white",borderTop:"1px solid "+border,borderBottom:"1px solid "+border,textAlign:"center"}}>
         <div className="reveal" style={{maxWidth:620,margin:"0 auto"}}>
-          <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,marginBottom:8}}>Where We Deliver</h2>
-          <p className="lp-fade lp-d1" style={{color:muted,fontSize:14,marginBottom:20}}>Serving Canaan and the surrounding towns:</p>
+          <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,marginBottom:8}}>{t("lp_where")}</h2>
+          <p className="lp-fade lp-d1" style={{color:muted,fontSize:14,marginBottom:20}}>{t("lp_serving")}</p>
           <div className="lp-fade lp-d2" style={{display:"flex",flexWrap:"wrap",gap:10,justifyContent:"center"}}>
             {["Canaan","North Canaan","East Canaan","Falls Village","Salisbury","Sheffield, MA","New Marlborough, MA","Lakeville","Norfolk","Sharon","Cornwall","Great Barrington, MA"].map(t=>(
               <span key={t} style={{background:cream,border:"1px solid "+border,borderRadius:20,padding:"8px 16px",fontSize:13,fontWeight:600}}>{t}</span>
             ))}
           </div>
-          <p className="lp-fade lp-d3" style={{color:muted,fontSize:12,marginTop:18}}>Don't see your town? Send a request anyway — we're always expanding.</p>
+          <p className="lp-fade lp-d3" style={{color:muted,fontSize:12,marginTop:18}}>{t("lp_no_town")}</p>
         </div>
       </section>
 
       {/* FAQ */}
       <section style={{padding:"40px 20px"}}>
         <div className="reveal" style={{maxWidth:680,margin:"0 auto"}}>
-          <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,textAlign:"center",marginBottom:24}}>Common Questions</h2>
+          <h2 className="lp-fade" style={{fontSize:22,fontWeight:900,textAlign:"center",marginBottom:24}}>{t("lp_faq")}</h2>
           <div style={{display:"flex",flexDirection:"column",gap:12}}>
             {[
-              {q:"How do I pay?",a:"Pay securely by card or Apple Pay through the app, or with cash on delivery — your choice."},
-              {q:"How long does delivery take?",a:"It depends on distance and the pickup spot, but because we're local, we're often faster than the big apps in our area."},
-              {q:"What can you pick up?",a:"Food from restaurants, plus pharmacy items, store goods, and local errands. If it's in our service area, just ask."},
-              {q:"How do I track my order?",a:"After you place a request, you get an Order ID and a tracking link so you always know where your delivery is."},
+              {q:t("faq_q1"),a:t("faq_a1")},
+              {q:t("faq_q2"),a:t("faq_a2")},
+              {q:t("faq_q3"),a:t("faq_a3")},
+              {q:t("faq_q4"),a:t("faq_a4")},
               {q:"Do you charge restaurants commission?",a:"No. Unlike the big platforms, we don't take a percentage from local restaurants."},
             ].map((f,i)=>(
               <div key={i} className="lp-fade lp-card" style={{background:"white",border:"1px solid "+border,borderRadius:10,padding:"16px 18px"}}>
@@ -564,16 +728,16 @@ function LandingPage({ navigate }) {
       {/* Final CTA */}
       <section style={{padding:"40px 20px 48px",background:"linear-gradient(160deg,"+cream+" 0%,#FFFFFF 100%)",textAlign:"center",borderTop:"1px solid "+border}}>
         <div style={{maxWidth:420,margin:"0 auto"}}>
-          <h2 className="lp-fade" style={{fontSize:20,fontWeight:900,marginBottom:6}}>Ready when you are</h2>
-          <p className="lp-fade lp-d1" style={{color:muted,fontSize:14,marginBottom:20}}>Get your delivery started in under a minute.</p>
-          <button className="lp-btn lp-fade lp-d2" onClick={()=>navigate("request")} style={{background:rust,color:"white",border:"none",padding:"16px 36px",fontSize:15,borderRadius:8,cursor:"pointer",fontWeight:700}}>🛵 Request a Delivery</button>
+          <h2 className="lp-fade" style={{fontSize:20,fontWeight:900,marginBottom:6}}>{t("lp_ready")}</h2>
+          <p className="lp-fade lp-d1" style={{color:muted,fontSize:14,marginBottom:20}}>{t("lp_ready_sub")}</p>
+          <button className="lp-btn lp-fade lp-d2" onClick={()=>navigate("request")} style={{background:rust,color:"white",border:"none",padding:"16px 36px",fontSize:15,borderRadius:8,cursor:"pointer",fontWeight:700}}>{t("req_delivery_cta")}</button>
         </div>
       </section>
 
       {/* Share section */}
       <section style={{background:cream,padding:"36px 20px",textAlign:"center",borderTop:"1px solid "+border}}>
         <div style={{maxWidth:520,margin:"0 auto"}}>
-          <h3 style={{fontSize:20,fontWeight:900,color:ink,marginBottom:6}}>Love the idea? Spread the word 💬</h3>
+          <h3 style={{fontSize:20,fontWeight:900,color:ink,marginBottom:6}}>{t("lp_spread")}</h3>
           <p style={{fontSize:14,color:muted,marginBottom:18}}>DELIVERme grows when neighbors tell neighbors. Share it with a friend — or someone who'd want to drive.</p>
           <div style={{display:"flex",flexDirection:"column",gap:12,alignItems:"center"}}>
             <ShareButton message="Check out DELIVERme — local delivery done right, by your neighbors. Food, groceries, supply house & more." url="https://deliverme-app.com" label="📲 Share DELIVERme" />
@@ -586,9 +750,9 @@ function LandingPage({ navigate }) {
       <footer style={{background:ink,color:"white",padding:"28px 20px",textAlign:"center"}}>
         <div style={{maxWidth:520,margin:"0 auto"}}>
           <div style={{marginBottom:8}}><span style={{fontWeight:900,color:"white",fontSize:18}}>DELIVER</span><span style={{fontWeight:700,color:"#E8B4AE",fontSize:18}}>me</span></div>
-          <p style={{fontSize:12,opacity:.7,marginBottom:8}}>Delivery for small town living · Canaan, CT</p>
-          <p style={{fontSize:12,opacity:.7}}>Questions? <a href="mailto:support@deliverme-app.com" style={{color:"#E8B4AE",textDecoration:"none"}}>support@deliverme-app.com</a></p>
-          <p style={{fontSize:11,opacity:.6,marginTop:12}}><span onClick={()=>navigate("privacy")} style={{color:"#E8B4AE",cursor:"pointer",textDecoration:"underline"}}>Privacy Policy</span> · <span onClick={()=>navigate("terms")} style={{color:"#E8B4AE",cursor:"pointer",textDecoration:"underline"}}>Terms of Service</span></p>
+          <p style={{fontSize:12,opacity:.7,marginBottom:8}}>{t("lp_footer_tag")}</p>
+          <p style={{fontSize:12,opacity:.7}}>{t("lp_questions")} <a href="mailto:support@deliverme-app.com" style={{color:"#E8B4AE",textDecoration:"none"}}>support@deliverme-app.com</a></p>
+          <p style={{fontSize:11,opacity:.6,marginTop:12}}><span onClick={()=>navigate("privacy")} style={{color:"#E8B4AE",cursor:"pointer",textDecoration:"underline"}}>{t("privacy_policy")}</span> · <span onClick={()=>navigate("terms")} style={{color:"#E8B4AE",cursor:"pointer",textDecoration:"underline"}}>{t("terms_of_service")}</span></p>
           <p style={{fontSize:11,opacity:.5,marginTop:12}}>Restaurant? Ask your DELIVERme driver for your portal link.</p>
         </div>
       </footer>
@@ -619,7 +783,7 @@ function PinEntry({ onSuccess, onDriverSuccess }) {
         <div style={{marginBottom:32}}>
           <span style={{fontSize:28,fontWeight:900,color:rust}}>DELIVER</span>
           <span style={{fontSize:28,fontWeight:700,color:ink}}>me</span>
-          <p style={{color:muted,fontSize:13,marginTop:8}}>Driver Access</p>
+          <p style={{color:muted,fontSize:13,marginTop:8}}>{t("driver_access")}</p>
         </div>
         <div style={{background:"white",border:"1px solid "+border,borderRadius:8,padding:24}}>
           <p style={{fontSize:13,color:muted,marginBottom:16}}>Enter your PIN to continue</p>
@@ -641,6 +805,8 @@ function DriverPortal({ navigate, preAuthedDriver }) {
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState([]);
   const [tab, setTab] = useState("available");
+  const [lang, setLangState] = useState(LANG.current);
+  const switchLang = () => { const n = LANG.current==="en"?"es":"en"; setLang(n); setLangState(n); };
 
   // LOGIN
   const login = async () => {
@@ -649,11 +815,11 @@ function DriverPortal({ navigate, preAuthedDriver }) {
     try {
       const drivers = await sb.getDrivers();
       const match = drivers.find(d => d.pin && d.pin === pin.trim());
-      if (!match) { setError("Invalid PIN. Please check with DELIVERme."); setLoading(false); return; }
-      if (match.status === "suspended") { setError("Your account is currently under review / temporarily deactivated. Please email support@deliverme-app.com."); setLoading(false); return; }
-      if (match.status !== "active") { setError("Your application is still pending approval. We'll be in touch soon!"); setLoading(false); return; }
+      if (!match) { setError(t("invalid_pin")); setLoading(false); return; }
+      if (match.status === "suspended") { setError(t("suspended_msg")); setLoading(false); return; }
+      if (match.status !== "active") { setError(t("pending_approval")); setLoading(false); return; }
       setDriver(match);
-    } catch(e) { setError("Login failed. Try again."); }
+    } catch(e) { setError(t("wrong_pin")); }
     finally { setLoading(false); }
   };
 
@@ -682,16 +848,16 @@ function DriverPortal({ navigate, preAuthedDriver }) {
     try {
       const result = await sb.claimOrder(orderId, driver.id);
       if (!result || result.length === 0) {
-        alert("That order was just claimed by another driver.");
+        alert(t("just_claimed"));
       }
       await loadOrders();
-    } catch(e) { alert("Could not claim. Try again."); }
+    } catch(e) { alert(t("could_not_claim")); }
   };
 
   // Update order status (picked up / delivered)
   const setStatus = async (orderId, status) => {
     try { await sb.updateOrder(orderId, { status }); await loadOrders(); }
-    catch(e) { alert("Could not update status."); }
+    catch(e) { alert(t("could_not_update")); }
   };
 
   // ===== LOGIN SCREEN =====
@@ -700,11 +866,14 @@ function DriverPortal({ navigate, preAuthedDriver }) {
       <div style={{fontFamily:"system-ui,sans-serif",background:ink,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
         <div style={{background:"white",borderRadius:14,padding:"36px 28px",maxWidth:360,width:"100%",textAlign:"center"}}>
           <div style={{marginBottom:6}}><span style={{fontWeight:900,color:rust,fontSize:26}}>DELIVER</span><span style={{fontWeight:700,color:ink,fontSize:26}}>me</span></div>
-          <p style={{color:muted,fontSize:13,marginBottom:24,fontWeight:700,letterSpacing:".05em"}}>DRIVER SIGN IN</p>
-          <input type="tel" value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} placeholder="Enter your PIN" style={{width:"100%",padding:"14px",fontSize:18,textAlign:"center",letterSpacing:"0.2em",border:"2px solid "+border,borderRadius:8,marginBottom:14,outline:"none",boxSizing:"border-box"}}/>
+          <p style={{color:muted,fontSize:13,marginBottom:24,fontWeight:700,letterSpacing:".05em"}}>{t("driver_signin")}</p>
+          <input type="tel" value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} placeholder={t("enter_pin")} style={{width:"100%",padding:"14px",fontSize:18,textAlign:"center",letterSpacing:"0.2em",border:"2px solid "+border,borderRadius:8,marginBottom:14,outline:"none",boxSizing:"border-box"}}/>
           {error && <p style={{color:"#DC3545",fontSize:13,marginBottom:14}}>{error}</p>}
-          <button onClick={login} disabled={loading||!pin} style={{width:"100%",background:(!pin)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:8,cursor:"pointer",fontWeight:700}}>{loading?"Signing in...":"Sign In"}</button>
-          <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer",marginTop:16}}>← Back to Home</button>
+          <button onClick={login} disabled={loading||!pin} style={{width:"100%",background:(!pin)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:8,cursor:"pointer",fontWeight:700}}>{loading?t("signing_in"):t("sign_in")}</button>
+          <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer",marginTop:16}}>{t("back_home")}</button>
+          <div style={{marginTop:16,borderTop:"1px solid "+border,paddingTop:14}}>
+            <button onClick={switchLang} style={{background:"none",border:"1px solid "+border,borderRadius:6,padding:"6px 14px",fontSize:13,cursor:"pointer",color:ink,fontWeight:600}}>{lang==="en" ? "🌐 Español" : "🌐 English"}</button>
+          </div>
         </div>
       </div>
     );
@@ -720,17 +889,17 @@ function DriverPortal({ navigate, preAuthedDriver }) {
   const orderCard = (o, showClaim, showStatus) => (
     <div key={o.id} style={{background:"white",border:"1px solid "+border,borderRadius:10,padding:14,marginBottom:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-        <div style={{fontSize:13,fontWeight:700,color:ink}}>{o.restaurant_name||"Customer Request"}</div>
+        <div style={{fontSize:13,fontWeight:700,color:ink}}>{o.restaurant_name||t("customer_request")}</div>
         <div style={{fontSize:16,fontWeight:900,color:rust}}>${Number(o.delivery_fee).toFixed(2)}</div>
       </div>
       <div style={{fontSize:13,marginBottom:3}}><strong>{o.customer_name}</strong> · {o.customer_phone}</div>
-      {o.restaurant_address && <div style={{fontSize:13,color:muted,marginBottom:2}}>🟢 Pickup: <a href={`https://maps.apple.com/?daddr=${encodeURIComponent(o.restaurant_address)}`} style={{color:"#1F8A4C",textDecoration:"none",fontWeight:600}}>{o.restaurant_address}</a></div>}
-      <div style={{fontSize:13,color:muted,marginBottom:2}}>🔴 Drop-off: <a href={`https://maps.apple.com/?daddr=${encodeURIComponent(o.dropoff_address)}`} style={{color:rust,textDecoration:"none",fontWeight:600}}>{o.dropoff_address}</a></div>
+      {o.restaurant_address && <div style={{fontSize:13,color:muted,marginBottom:2}}>🟢 {t("pickup")}: <a href={`https://maps.apple.com/?daddr=${encodeURIComponent(o.restaurant_address)}`} style={{color:"#1F8A4C",textDecoration:"none",fontWeight:600}}>{o.restaurant_address}</a></div>}
+      <div style={{fontSize:13,color:muted,marginBottom:2}}>🔴 {t("dropoff")}: <a href={`https://maps.apple.com/?daddr=${encodeURIComponent(o.dropoff_address)}`} style={{color:rust,textDecoration:"none",fontWeight:600}}>{o.dropoff_address}</a></div>
       {o.order_details && <div style={{fontSize:12,color:muted,marginTop:4}}>📦 {o.order_details}</div>}
-      <div style={{fontSize:12,color:"#1F8A4C",fontWeight:700,marginTop:6}}>You earn: ${(Number(o.delivery_fee)*0.78).toFixed(2)}</div>
-      {showClaim && <button onClick={()=>claim(o.id)} style={{width:"100%",marginTop:10,background:rust,color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700}}>✋ Claim This Order</button>}
-      {showStatus && o.status==="claimed" && <button onClick={()=>setStatus(o.id,"picked_up")} style={{width:"100%",marginTop:10,background:"#FF6B1A",color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700}}>📦 Mark Picked Up</button>}
-      {showStatus && o.status==="picked_up" && <button onClick={()=>setStatus(o.id,"delivered")} style={{width:"100%",marginTop:10,background:"#1F8A4C",color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700}}>✅ Mark Delivered</button>}
+      <div style={{fontSize:12,color:"#1F8A4C",fontWeight:700,marginTop:6}}>{t("you_earn")}: ${(Number(o.delivery_fee)*0.78).toFixed(2)}</div>
+      {showClaim && <button onClick={()=>claim(o.id)} style={{width:"100%",marginTop:10,background:rust,color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700}}>{t("claim_order")}</button>}
+      {showStatus && o.status==="claimed" && <button onClick={()=>setStatus(o.id,"picked_up")} style={{width:"100%",marginTop:10,background:"#FF6B1A",color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700}}>{t("mark_picked_up")}</button>}
+      {showStatus && o.status==="picked_up" && <button onClick={()=>setStatus(o.id,"delivered")} style={{width:"100%",marginTop:10,background:"#1F8A4C",color:"white",border:"none",padding:"12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700}}>{t("mark_delivered")}</button>}
     </div>
   );
 
@@ -739,23 +908,24 @@ function DriverPortal({ navigate, preAuthedDriver }) {
       <header style={{background:ink,color:"white",padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div><span style={{fontWeight:900,color:"#E8927C",fontSize:17}}>DELIVER</span><span style={{fontWeight:700,fontSize:17}}>me</span><span style={{fontSize:12,opacity:.7,marginLeft:8}}>Driver</span></div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <span style={{fontSize:13}}>Hi, {driver.name?.split(" ")[0]}</span>
-          <button onClick={()=>{setDriver(null);setPin("");}} style={{background:"none",border:"1px solid rgba(255,255,255,.3)",color:"white",fontSize:12,padding:"4px 10px",borderRadius:5,cursor:"pointer"}}>Sign Out</button>
+          <button onClick={switchLang} style={{background:"none",border:"1px solid rgba(255,255,255,.3)",color:"white",fontSize:12,padding:"4px 8px",borderRadius:5,cursor:"pointer"}}>{lang==="en"?"ES":"EN"}</button>
+          <span style={{fontSize:13}}>{t("hi")}, {driver.name?.split(" ")[0]}</span>
+          <button onClick={()=>{setDriver(null);setPin("");}} style={{background:"none",border:"1px solid rgba(255,255,255,.3)",color:"white",fontSize:12,padding:"4px 10px",borderRadius:5,cursor:"pointer"}}>{t("sign_out")}</button>
         </div>
       </header>
 
       {/* Availability toggle */}
       <div style={{background:driver.signed_on?"#E8F5EC":"#FBEAEA",padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid "+border}}>
         <div>
-          <div style={{fontSize:14,fontWeight:700,color:driver.signed_on?"#1F8A4C":"#DC3545"}}>{driver.signed_on?"🟢 You're Signed On":"⚪ You're Signed Off"}</div>
-          <div style={{fontSize:12,color:muted}}>{driver.signed_on?"You'll get new order alerts":"Sign on to receive orders"}</div>
+          <div style={{fontSize:14,fontWeight:700,color:driver.signed_on?"#1F8A4C":"#DC3545"}}>{driver.signed_on?"🟢 "+t("youre_signed_on"):"⚪ "+t("youre_signed_off")}</div>
+          <div style={{fontSize:12,color:muted}}>{driver.signed_on?t("get_alerts"):t("signon_to_receive")}</div>
         </div>
-        <button onClick={toggleSignedOn} style={{background:driver.signed_on?"#DC3545":"#1F8A4C",color:"white",border:"none",padding:"10px 18px",fontSize:14,borderRadius:8,cursor:"pointer",fontWeight:700}}>{driver.signed_on?"Sign Off":"Sign On"}</button>
+        <button onClick={toggleSignedOn} style={{background:driver.signed_on?"#DC3545":"#1F8A4C",color:"white",border:"none",padding:"10px 18px",fontSize:14,borderRadius:8,cursor:"pointer",fontWeight:700}}>{driver.signed_on?t("sign_off"):t("sign_on")}</button>
       </div>
 
       {/* Tabs */}
       <div style={{display:"flex",borderBottom:"1px solid "+border,background:"white"}}>
-        {[["available","Available ("+available.length+")"],["mine","My Deliveries ("+mine.length+")"],["earnings","Earnings"]].map(([k,label])=>(
+        {[["available",t("available")+" ("+available.length+")"],["mine",t("my_deliveries")+" ("+mine.length+")"],["earnings",t("earnings")]].map(([k,label])=>(
           <button key={k} onClick={()=>setTab(k)} style={{flex:1,padding:"12px 8px",background:tab===k?cream:"white",border:"none",borderBottom:tab===k?"2px solid "+rust:"2px solid transparent",color:tab===k?rust:muted,fontSize:13,fontWeight:700,cursor:"pointer"}}>{label}</button>
         ))}
       </div>
@@ -763,28 +933,28 @@ function DriverPortal({ navigate, preAuthedDriver }) {
       <main style={{padding:"16px 18px",maxWidth:560,margin:"0 auto"}}>
         {tab==="available" && (
           <div>
-            {!driver.signed_on && <div style={{background:"#FFF8E1",border:"1px solid #FFE082",borderRadius:8,padding:12,fontSize:13,color:"#8A6D00",marginBottom:14}}>You're signed off. Sign on above to start claiming orders.</div>}
-            {available.length===0 && <div style={{textAlign:"center",padding:"40px 20px",color:muted,fontSize:14}}>No orders available right now. New orders will appear here automatically.</div>}
+            {!driver.signed_on && <div style={{background:"#FFF8E1",border:"1px solid #FFE082",borderRadius:8,padding:12,fontSize:13,color:"#8A6D00",marginBottom:14}}>{t("signed_off_notice")}</div>}
+            {available.length===0 && <div style={{textAlign:"center",padding:"40px 20px",color:muted,fontSize:14}}>{t("no_orders_available")}</div>}
             {available.map(o=>orderCard(o, driver.signed_on, false))}
           </div>
         )}
         {tab==="mine" && (
           <div>
-            {mine.length===0 && <div style={{textAlign:"center",padding:"40px 20px",color:muted,fontSize:14}}>No active deliveries. Claim an order from the Available tab.</div>}
+            {mine.length===0 && <div style={{textAlign:"center",padding:"40px 20px",color:muted,fontSize:14}}>{t("no_active_deliveries")}</div>}
             {mine.map(o=>orderCard(o, false, true))}
           </div>
         )}
         {tab==="earnings" && (
           <div>
             <div style={{background:"white",border:"1px solid "+border,borderRadius:10,padding:20,textAlign:"center",marginBottom:14}}>
-              <div style={{fontSize:13,color:muted,marginBottom:4}}>Your Earnings ({myCompleted.length} deliveries)</div>
+              <div style={{fontSize:13,color:muted,marginBottom:4}}>{t("your_earnings")} ({myCompleted.length} {t("deliveries")})</div>
               <div style={{fontSize:34,fontWeight:900,color:"#1F8A4C"}}>${myEarnings.toFixed(2)}</div>
-              <div style={{fontSize:12,color:muted,marginTop:4}}>You keep 78% · ${myGross.toFixed(2)} total fees collected</div>
+              <div style={{fontSize:12,color:muted,marginTop:4}}>{t("you_keep_78")} · ${myGross.toFixed(2)} {t("total_fees_collected")}</div>
             </div>
-            <p style={{fontSize:12,color:muted,textAlign:"center"}}>Payouts are sent by DELIVERme. Questions? support@deliverme-app.com</p>
+            <p style={{fontSize:12,color:muted,textAlign:"center"}}>{t("payouts_note")}</p>
             {myCompleted.slice(0,10).map(o=>(
               <div key={o.id} style={{background:"white",border:"1px solid "+border,borderRadius:8,padding:12,marginTop:8,display:"flex",justifyContent:"space-between",fontSize:13}}>
-                <span>{o.dropoff_address?.split(",")[0]||"Delivery"}</span>
+                <span>{o.dropoff_address?.split(",")[0]||t("delivery")}</span>
                 <span style={{fontWeight:700,color:"#1F8A4C"}}>+${(Number(o.delivery_fee)*0.78).toFixed(2)}</span>
               </div>
             ))}
@@ -809,7 +979,7 @@ function DriverSignup({ navigate }) {
       await sb.createDriver({ name: form.name, phone: form.phone, email: form.email, vehicle: form.vehicle, area: form.area, license_number: form.licenseNumber, agreed_to_terms: agreed, status: "pending" });
       sendSMS("+19296908573", "🚗 New DELIVERme driver application!\n"+form.name+" ("+form.phone+")\nVehicle: "+form.vehicle+"\nArea: "+form.area);
       setSubmitted(true);
-    } catch(e) { alert("Error submitting. Please try again."); }
+    } catch(e) { alert(t("error_submitting")); }
     finally { setLoading(false); }
   };
   if (submitted) return (
@@ -833,7 +1003,7 @@ function DriverSignup({ navigate }) {
       <header style={{background:"white",borderBottom:"1px solid #DDD5C8",padding:"14px 20px"}}>
         <div style={{maxWidth:520,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div><span style={{fontWeight:900,color:rust,fontSize:18}}>DELIVER</span><span style={{fontWeight:700,color:ink,fontSize:18}}>me</span></div>
-          <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>← Home</button>
+          <div style={{display:"flex",gap:10,alignItems:"center"}}><button onClick={switchLang} style={{background:"none",border:"1px solid #DDD5C8",borderRadius:6,padding:"4px 10px",color:ink,fontSize:12,cursor:"pointer",fontWeight:600}}>{lang==="en"?"🌐 Español":"🌐 English"}</button><button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>{t("home_short")}</button></div>
         </div>
       </header>
       <main style={{maxWidth:520,margin:"0 auto",padding:"24px 16px"}}>
@@ -1364,7 +1534,7 @@ function HoursPanel() {
             <div style={{background:rust,color:"white",borderRadius:10,padding:"12px 16px",textAlign:"center"}}>
               {announce && <div style={{fontSize:14,fontWeight:800}}>🎉 {announce}</div>}
               {schedule && <div style={{fontSize:13,fontWeight:600,marginTop:announce?5:0,opacity:.95}}>🕒 {schedule}</div>}
-              <div style={{fontSize:11,marginTop:6,opacity:.8}}>Outside these hours we're offline — check back soon!</div>
+              <div style={{fontSize:11,marginTop:6,opacity:.8}}>{t("lp_offline")}</div>
             </div>
           </div>
 
@@ -1549,7 +1719,7 @@ function LegalPage({ navigate, kind }) {
       <header style={{background:"white",borderBottom:"1px solid "+border,padding:"14px 20px"}}>
         <div style={{maxWidth:720,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div style={{cursor:"pointer"}} onClick={()=>navigate("")}><span style={{fontWeight:900,color:rust,fontSize:18}}>DELIVER</span><span style={{fontWeight:700,color:ink,fontSize:18}}>me</span></div>
-          <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>← Home</button>
+          <div style={{display:"flex",gap:10,alignItems:"center"}}><button onClick={switchLang} style={{background:"none",border:"1px solid #DDD5C8",borderRadius:6,padding:"4px 10px",color:ink,fontSize:12,cursor:"pointer",fontWeight:600}}>{lang==="en"?"🌐 Español":"🌐 English"}</button><button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>{t("home_short")}</button></div>
         </div>
       </header>
       <main style={{maxWidth:720,margin:"0 auto",padding:"32px 20px 60px",lineHeight:1.6,fontSize:14.5}}>
@@ -1633,7 +1803,7 @@ function PartnerPage({ navigate }) {
       <header style={{background:"white",borderBottom:"1px solid "+border,padding:"14px 20px"}}>
         <div style={{maxWidth:620,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div><span style={{fontWeight:900,color:rust,fontSize:18}}>DELIVER</span><span style={{fontWeight:700,color:ink,fontSize:18}}>me</span></div>
-          <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>← Home</button>
+          <div style={{display:"flex",gap:10,alignItems:"center"}}><button onClick={switchLang} style={{background:"none",border:"1px solid #DDD5C8",borderRadius:6,padding:"4px 10px",color:ink,fontSize:12,cursor:"pointer",fontWeight:600}}>{lang==="en"?"🌐 Español":"🌐 English"}</button><button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>{t("home_short")}</button></div>
         </div>
       </header>
 
@@ -1660,7 +1830,7 @@ function PartnerPage({ navigate }) {
 
         {/* How it works */}
         <div className="pp-fade" style={{background:cream,border:"1px solid "+border,borderRadius:12,padding:22,marginBottom:24}}>
-          <div style={{fontSize:13,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",marginBottom:14,textAlign:"center"}}>How It Works</div>
+          <div style={{fontSize:13,fontWeight:800,letterSpacing:".08em",textTransform:"uppercase",marginBottom:14,textAlign:"center"}}>{t("lp_how_it_works")}</div>
           <div style={{display:"flex",flexDirection:"column",gap:12}}>
             {[
               {n:"1",t:"You get a private portal link",d:"No app to download, no setup. Just a link your team opens."},
@@ -1739,7 +1909,7 @@ function RestaurantPortal({ restaurant, slug }) {
         customerName: form.customerName
       });
       setSubmitted(true);
-    } catch(e) { alert("Error submitting. Please try again."); }
+    } catch(e) { alert(t("error_submitting")); }
     finally { setLoading(false); }
   };
 
@@ -1818,7 +1988,7 @@ function RestaurantPortal({ restaurant, slug }) {
             <textarea name="orderDetails" value={form.orderDetails} onChange={handleChange} placeholder="2x Margherita, 1x Caesar salad..." rows={3} style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none",resize:"vertical",fontFamily:"inherit"}}/>
           </div>
           <div>
-            <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Notes</label>
+            <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>{t("notes_label")}</label>
             <input name="notes" value={form.notes} onChange={handleChange} placeholder="Leave at door, call on arrival..." style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,color:ink,outline:"none"}}/>
           </div>
           <div>
@@ -1902,6 +2072,8 @@ function RestaurantPortal({ restaurant, slug }) {
 
 function CustomerRequest({ navigate }) {
   const [form, setForm] = useState({ customerName:"", customerPhone:"", pickupName:"", pickupAddress:"", dropoffAddress:"", orderDetails:"", notes:"" });
+  const [lang, setLangState] = useState(LANG.current);
+  const switchLang = () => { const n = LANG.current==="en"?"es":"en"; setLang(n); setLangState(n); };
   const [smsConsent, setSmsConsent] = useState(false);
   const [dropoffTown, setDropoffTown] = useState(null); // selected town object {town,fee} or "__other__"
   const [pickupTown, setPickupTown] = useState(null); // selected pickup town object
@@ -1945,18 +2117,18 @@ function CustomerRequest({ navigate }) {
         customerName: form.customerName
       });
       setSubmitted(true);
-    } catch(e) { alert("Error submitting. Please try again."); }
+    } catch(e) { alert(t("error_submitting")); }
     finally { setLoading(false); }
   };
   if (submitted) return (
     <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
       <div style={{textAlign:"center",maxWidth:400}}>
         <div style={{fontSize:56,marginBottom:12}}>✓</div>
-        <h2 style={{fontSize:24,fontWeight:900,color:ink,marginBottom:8}}>Request Sent!</h2>
-        <p style={{color:muted,fontSize:14,marginBottom:4}}>Your driver has been notified and will confirm shortly.</p>
-        {orderId && (<div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:16,marginTop:16,marginBottom:24}}><p style={{fontSize:12,color:muted,marginBottom:4}}>Your Order ID</p><p style={{fontSize:20,fontWeight:900,color:rust}}>{orderId.slice(0,8).toUpperCase()}</p><p style={{fontSize:12,color:muted,marginTop:4}}>Save this to track your delivery</p></div>)}
-        <button onClick={()=>navigate("track/"+orderId.slice(0,8).toUpperCase())} style={{width:"100%",background:ink,color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15,marginBottom:10}}>📍 Track My Order</button>
-        <button onClick={()=>{setSubmitted(false);setForm({customerName:"",customerPhone:"",pickupName:"",pickupAddress:"",dropoffAddress:"",orderDetails:"",notes:""});setDropoffTown(null);}} style={{width:"100%",background:"none",color:muted,border:"1px solid #DDD5C8",padding:"12px",borderRadius:6,cursor:"pointer",fontSize:13}}>New Request</button>
+        <h2 style={{fontSize:24,fontWeight:900,color:ink,marginBottom:8}}>{t("request_sent")}</h2>
+        <p style={{color:muted,fontSize:14,marginBottom:4}}>{t("driver_notified")}</p>
+        {orderId && (<div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:16,marginTop:16,marginBottom:24}}><p style={{fontSize:12,color:muted,marginBottom:4}}>{t("your_order_id")}</p><p style={{fontSize:20,fontWeight:900,color:rust}}>{orderId.slice(0,8).toUpperCase()}</p><p style={{fontSize:12,color:muted,marginTop:4}}>{t("save_to_track")}</p></div>)}
+        <button onClick={()=>navigate("track/"+orderId.slice(0,8).toUpperCase())} style={{width:"100%",background:ink,color:"white",border:"none",padding:"14px",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:15,marginBottom:10}}>{t("track_my_order")}</button>
+        <button onClick={()=>{setSubmitted(false);setForm({customerName:"",customerPhone:"",pickupName:"",pickupAddress:"",dropoffAddress:"",orderDetails:"",notes:""});setDropoffTown(null);}} style={{width:"100%",background:"none",color:muted,border:"1px solid #DDD5C8",padding:"12px",borderRadius:6,cursor:"pointer",fontSize:13}}>{t("new_request")}</button>
       </div>
     </div>
   );
@@ -1966,58 +2138,58 @@ function CustomerRequest({ navigate }) {
       <header style={{background:"white",borderBottom:"1px solid #DDD5C8",padding:"14px 20px"}}>
         <div style={{maxWidth:520,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div><span style={{fontWeight:900,color:rust,fontSize:18}}>DELIVER</span><span style={{fontWeight:700,color:ink,fontSize:18}}>me</span></div>
-          <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>← Home</button>
+          <div style={{display:"flex",gap:10,alignItems:"center"}}><button onClick={switchLang} style={{background:"none",border:"1px solid #DDD5C8",borderRadius:6,padding:"4px 10px",color:ink,fontSize:12,cursor:"pointer",fontWeight:600}}>{lang==="en"?"🌐 Español":"🌐 English"}</button><button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>{t("home_short")}</button></div>
         </div>
       </header>
       <main style={{maxWidth:520,margin:"0 auto",padding:"24px 16px"}}>
         <div style={{marginBottom:24}}>
-          <h1 style={{fontSize:26,fontWeight:900}}>Request a Delivery</h1>
-          <p style={{color:muted,fontSize:13,marginTop:6}}>Already ordered? We'll pick it up and bring it to you. $8 flat delivery fee.</p>
+          <h1 style={{fontSize:26,fontWeight:900}}>{t("request_a_delivery")}</h1>
+          <p style={{color:muted,fontSize:13,marginTop:6}}>{t("req_subtitle")}</p>
         </div>
         {!available && (
           <div style={{background:"#F8D7DA",border:"1px solid #DC3545",borderRadius:8,padding:16,marginBottom:16,textAlign:"center"}}>
             <p style={{fontWeight:700,color:"#721C24"}}>🔴 DELIVERme is currently offline</p>
-            <p style={{fontSize:13,color:"#721C24",marginTop:4}}>We're not accepting new requests right now. Please check back soon!</p>
+            <p style={{fontSize:13,color:"#721C24",marginTop:4}}>"+t("not_accepting")+"</p>
           </div>
         )}
         <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20,display:"flex",flexDirection:"column",gap:16}}>
           <div style={{borderBottom:"1px solid #DDD5C8",paddingBottom:16}}>
-            <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>Your Info</p>
+            <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>{t("your_info")}</p>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Your Name *</label><input name="customerName" value={form.customerName} onChange={handleChange} placeholder="Jane Smith" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
-              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Your Phone *</label><input name="customerPhone" value={form.customerPhone} onChange={handleChange} placeholder="(860) 555-0000" type="tel" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>{t("your_name")} *</label><input name="customerName" value={form.customerName} onChange={handleChange} placeholder="Jane Smith" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>{t("your_phone")} *</label><input name="customerPhone" value={form.customerPhone} onChange={handleChange} placeholder="(860) 555-0000" type="tel" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
             </div>
           </div>
           <div style={{borderBottom:"1px solid #DDD5C8",paddingBottom:16}}>
-            <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>Pickup Location</p>
+            <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>{t("pickup_location")}</p>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Pickup Place</label>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>{t("pickup_place")}</label>
                 <select value={form.pickupName} onChange={e=>{
                   const chosen = e.target.value;
                   const spot = pickupSpots.find(s=>s.name===chosen);
                   setForm(prev=>({...prev, pickupName: chosen, pickupAddress: spot ? spot.address : (chosen==="__other__" ? "" : prev.pickupAddress)}));
                 }} style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}>
-                  <option value="">Select a pickup spot...</option>
+                  <option value="">{t("select_pickup_spot")}</option>
                   {pickupSpots.map(s=>(<option key={s.id} value={s.name}>{s.name}</option>))}
                   <option value="__other__">Other (not listed — I'll type it)</option>
                 </select>
               </div>
               {form.pickupName==="__other__" && (
-                <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Place Name</label><input value={form.pickupNameOther||""} onChange={e=>setForm(prev=>({...prev,pickupNameOther:e.target.value}))} placeholder="Name of the place" style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
+                <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>{t("place_name")}</label><input value={form.pickupNameOther||""} onChange={e=>setForm(prev=>({...prev,pickupNameOther:e.target.value}))} placeholder={t("place_name")} style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
               )}
-              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Pickup Address *</label><input name="pickupAddress" value={form.pickupAddress} onChange={handleChange} placeholder="123 Main St, Canaan, CT" style={{width:"100%",padding:"10px 12px",border:"1px solid "+(form.pickupAddress&&!pickupOk?"#DC3545":"#DDD5C8"),borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
-                {form.pickupAddress && !pickupOk && <p style={{fontSize:11,color:"#DC3545",marginTop:4}}>Please enter a full street address, including the number.</p>}
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>{t("pickup_address")} *</label><input name="pickupAddress" value={form.pickupAddress} onChange={handleChange} placeholder="123 Main St, Canaan, CT" style={{width:"100%",padding:"10px 12px",border:"1px solid "+(form.pickupAddress&&!pickupOk?"#DC3545":"#DDD5C8"),borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+                {form.pickupAddress && !pickupOk && <p style={{fontSize:11,color:"#DC3545",marginTop:4}}>{t("enter_full_address")}</p>}
               </div>
             </div>
           </div>
           <div>
-            <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>Delivery Details</p>
+            <p style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:12,fontWeight:700}}>{t("delivery_details")}</p>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Drop-off Address *</label><input name="dropoffAddress" value={form.dropoffAddress} onChange={handleChange} placeholder="123 Your St (include street number)" style={{width:"100%",padding:"10px 12px",border:"1px solid "+(form.dropoffAddress&&!dropoffOk?"#DC3545":"#DDD5C8"),borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
-                {form.dropoffAddress && !dropoffOk && <p style={{fontSize:11,color:"#DC3545",marginTop:4}}>Please enter a full street address, including the number.</p>}
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>{t("dropoff_address")} *</label><input name="dropoffAddress" value={form.dropoffAddress} onChange={handleChange} placeholder="123 Your St (include street number)" style={{width:"100%",padding:"10px 12px",border:"1px solid "+(form.dropoffAddress&&!dropoffOk?"#DC3545":"#DDD5C8"),borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+                {form.dropoffAddress && !dropoffOk && <p style={{fontSize:11,color:"#DC3545",marginTop:4}}>{t("enter_full_address")}</p>}
               </div>
               <div>
-                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:8}}>Tap Your Town for Delivery *</label>
+                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:8}}>{t("tap_your_town")} *</label>
                 <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
                   {DELIVERY_TOWNS.map(t=>{
                     const sel = townSelected && dropoffTown.town===t.town;
@@ -2040,8 +2212,8 @@ function CustomerRequest({ navigate }) {
                 )}
               </div>
               <div>
-                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:8}}>Tap the Pickup Town *</label>
-                <p style={{fontSize:12,color:muted,marginBottom:8,marginTop:-4}}>Which town are we picking up from? Your fee is based on the distance between pickup and drop-off.</p>
+                <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:8}}>{t("tap_pickup_town")} *</label>
+                <p style={{fontSize:12,color:muted,marginBottom:8,marginTop:-4}}>{t("which_town_pickup")}</p>
                 <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
                   {DELIVERY_TOWNS.map(t=>{
                     const sel = pickupTownSelected && pickupTown.town===t.town;
@@ -2054,23 +2226,23 @@ function CustomerRequest({ navigate }) {
                   })}
                 </div>
               </div>
-              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>What did you order?</label><textarea name="orderDetails" value={form.orderDetails} onChange={handleChange} placeholder="Big Mac combo, large fries..." rows={3} style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none",resize:"vertical",fontFamily:"inherit"}}/></div>
-              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>Notes</label><input name="notes" value={form.notes} onChange={handleChange} placeholder="Leave at door, call on arrival..." style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>{t("what_did_you_order")}</label><textarea name="orderDetails" value={form.orderDetails} onChange={handleChange} placeholder="Big Mac combo, large fries..." rows={3} style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none",resize:"vertical",fontFamily:"inherit"}}/></div>
+              <div><label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:5}}>{t("notes_label")}</label><input name="notes" value={form.notes} onChange={handleChange} placeholder="Leave at door, call on arrival..." style={{width:"100%",padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/></div>
             </div>
           </div>
           <div style={{borderTop:"1px solid #DDD5C8",paddingTop:16}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div><p style={{fontWeight:700,fontSize:15}}>Delivery Fee</p><p style={{fontSize:12,color:muted}}>{(townSelected&&pickupTownSelected) ? pickupTown.town+" → "+dropoffTown.town : "Tap pickup & drop-off towns"}</p></div>
+              <div><p style={{fontWeight:700,fontSize:15}}>{t("delivery_fee_label")}</p><p style={{fontSize:12,color:muted}}>{(townSelected&&pickupTownSelected) ? pickupTown.town+" → "+dropoffTown.town : t("tap_your_town")}</p></div>
               <p style={{fontSize:22,fontWeight:900,color:rust}}>{(townSelected&&pickupTownSelected) ? "$"+deliveryFee.toFixed(2) : "—"}</p>
             </div>
             <div style={{background:cream,border:"1px solid "+border,borderRadius:8,padding:"12px 14px",marginBottom:14}}>
-              <div style={{fontSize:11,fontWeight:800,color:muted,textTransform:"uppercase",letterSpacing:".05em",marginBottom:8}}>Optional</div>
+              <div style={{fontSize:11,fontWeight:800,color:muted,textTransform:"uppercase",letterSpacing:".05em",marginBottom:8}}>{t("optional")}</div>
               <label style={{display:"flex",gap:10,alignItems:"flex-start",cursor:"pointer"}}>
                 <input type="checkbox" checked={smsConsent} onChange={e=>setSmsConsent(e.target.checked)} style={{marginTop:3,width:18,height:18,flexShrink:0,cursor:"pointer"}}/>
-                <span style={{fontSize:12,color:ink,lineHeight:1.5}}>(Optional) I agree to receive recurring delivery-related text messages (order alerts, status, and tracking updates) from DELIVERme at the number provided. Message frequency varies. Message and data rates may apply. Reply STOP to unsubscribe, HELP for help. Consent is not a condition of purchase — you can still request a delivery without checking this box. See our <span style={{color:rust,fontWeight:700,textDecoration:"underline"}} onClick={(e)=>{e.preventDefault();navigate("privacy");}}>Privacy Policy</span> and <span style={{color:rust,fontWeight:700,textDecoration:"underline"}} onClick={(e)=>{e.preventDefault();navigate("terms");}}>Terms</span>.</span>
+                <span style={{fontSize:12,color:ink,lineHeight:1.5}}>{t("consent_text")} {t("see_our")} <span style={{color:rust,fontWeight:700,textDecoration:"underline"}} onClick={(e)=>{e.preventDefault();navigate("privacy");}}>{t("privacy_policy")}</span> {t("and_word")} <span style={{color:rust,fontWeight:700,textDecoration:"underline"}} onClick={(e)=>{e.preventDefault();navigate("terms");}}>{t("terms")}</span>.</span>
               </label>
             </div>
-            <button onClick={submit} disabled={loading||!available||!townSelected||!pickupTownSelected||!form.customerName||!form.customerPhone||!pickupOk||!dropoffOk} style={{width:"100%",background:(!available||!townSelected||!pickupTownSelected||!form.customerName||!form.customerPhone||!pickupOk||!dropoffOk)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>{!available ? "Currently Offline" : isOutOfArea ? "Outside Service Area" : !form.customerName||!form.customerPhone ? "Enter Your Name & Phone" : !pickupOk ? "Enter Full Pickup Address" : !dropoffOk ? "Enter Full Drop-off Address" : !pickupTownSelected ? "Tap Pickup Town" : !townSelected ? "Tap Drop-off Town" : loading ? "Sending..." : "Request Delivery 🚗"}</button>
+            <button onClick={submit} disabled={loading||!available||!townSelected||!pickupTownSelected||!form.customerName||!form.customerPhone||!pickupOk||!dropoffOk} style={{width:"100%",background:(!available||!townSelected||!pickupTownSelected||!form.customerName||!form.customerPhone||!pickupOk||!dropoffOk)?"#ccc":rust,color:"white",border:"none",padding:"14px",fontSize:15,borderRadius:6,cursor:"pointer",fontWeight:700}}>{!available ? t("currently_offline") : isOutOfArea ? t("outside_area") : !form.customerName||!form.customerPhone ? t("enter_name_phone") : !pickupOk ? t("enter_full_pickup") : !dropoffOk ? t("enter_full_dropoff") : !pickupTownSelected ? t("tap_pickup_town_btn") : !townSelected ? t("tap_dropoff_town_btn") : loading ? t("sending") : t("request_delivery_btn")}</button>
           </div>
         </div>
       </main>
@@ -2079,6 +2251,8 @@ function CustomerRequest({ navigate }) {
 }
 
 function TrackingPage({ navigate, initialOrderId }) {
+  const [lang, setLangState] = useState(LANG.current);
+  const switchLang = () => { const n = LANG.current==="en"?"es":"en"; setLang(n); setLangState(n); };
   const [orderId, setOrderId] = useState(initialOrderId || "");
   const [tracked, setTracked] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -2102,7 +2276,7 @@ function TrackingPage({ navigate, initialOrderId }) {
     const link = STRIPE_FEE_LINKS[DELIVERY_FEE] || STRIPE_FEE_LINKS[8];
     window.open(link+"?client_reference_id="+tracked.id.slice(0,8)+"&locale=auto", "_blank");
   };
-  const steps = ["Order Received","Driver Accepted","Picked Up","On The Way","Delivered"];
+  const steps = [t("step_received"),t("step_accepted"),t("step_picked"),t("step_ontheway"),t("step_delivered")];
   const stepIndex = !tracked ? 0 : tracked.status==="pending" ? 1 : tracked.status==="active" || tracked.status==="ready_for_pickup" ? 2 : tracked.status==="picked_up" ? 4 : tracked.status==="delivered" ? 5 : 0;
   return (
     <div style={{fontFamily:"system-ui,sans-serif",background:cream,minHeight:"100vh",color:ink}}>
@@ -2110,16 +2284,16 @@ function TrackingPage({ navigate, initialOrderId }) {
       <header style={{background:"white",borderBottom:"1px solid #DDD5C8",padding:"14px 20px"}}>
         <div style={{maxWidth:480,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div><span style={{fontWeight:900,color:rust,fontSize:16}}>DELIVER</span><span style={{fontWeight:700,color:ink,fontSize:16}}>me</span></div>
-          <button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>← Home</button>
+          <div style={{display:"flex",gap:10,alignItems:"center"}}><button onClick={switchLang} style={{background:"none",border:"1px solid #DDD5C8",borderRadius:6,padding:"4px 10px",color:ink,fontSize:12,cursor:"pointer",fontWeight:600}}>{lang==="en"?"🌐 Español":"🌐 English"}</button><button onClick={()=>navigate("")} style={{background:"none",border:"none",color:muted,fontSize:13,cursor:"pointer"}}>{t("home_short")}</button></div>
         </div>
       </header>
       <main style={{maxWidth:480,margin:"0 auto",padding:"24px 16px"}}>
-        <h1 style={{fontSize:24,fontWeight:900,marginBottom:20}}>Track Your Delivery</h1>
+        <h1 style={{fontSize:24,fontWeight:900,marginBottom:20}}>{t("track_your_delivery")}</h1>
         <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20,marginBottom:16}}>
-          <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:6}}>Order ID</label>
+          <label style={{display:"block",fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:muted,marginBottom:6}}>{t("order_id_label")}</label>
           <div style={{display:"flex",gap:10}}>
-            <input value={orderId} onChange={e=>setOrderId(e.target.value)} onKeyDown={e=>e.key==="Enter"&&track()} placeholder="Enter your order ID" style={{flex:1,padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
-            <button onClick={()=>track()} disabled={loading||!orderId} style={{background:rust,color:"white",border:"none",padding:"10px 18px",borderRadius:4,cursor:"pointer",fontWeight:600,fontSize:13}}>{loading ? "..." : "Track"}</button>
+            <input value={orderId} onChange={e=>setOrderId(e.target.value)} onKeyDown={e=>e.key==="Enter"&&track()} placeholder={t("track_enter_placeholder")} style={{flex:1,padding:"10px 12px",border:"1px solid #DDD5C8",borderRadius:4,fontSize:14,background:cream,outline:"none"}}/>
+            <button onClick={()=>track()} disabled={loading||!orderId} style={{background:rust,color:"white",border:"none",padding:"10px 18px",borderRadius:4,cursor:"pointer",fontWeight:600,fontSize:13}}>{loading ? "..." : t("track_short")}</button>
           </div>
         </div>
         {tracked && (
@@ -2127,8 +2301,8 @@ function TrackingPage({ navigate, initialOrderId }) {
             <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20,marginBottom:16}}>
               <div style={{marginBottom:16}}>
                 <div style={{fontWeight:700,fontSize:16}}>{tracked.restaurant_name}</div>
-                <div style={{fontSize:13,color:muted,marginTop:4}}>To: {tracked.dropoff_address}</div>
-                <div style={{fontSize:13,color:muted}}>For: {tracked.customer_name}</div>
+                <div style={{fontSize:13,color:muted,marginTop:4}}>{t("track_to")}: {tracked.dropoff_address}</div>
+                <div style={{fontSize:13,color:muted}}>{t("track_for")}: {tracked.customer_name}</div>
               </div>
               {steps.map((step,i) => {
                 const done=i<stepIndex, active=i===stepIndex-1;
@@ -2150,7 +2324,7 @@ function TrackingPage({ navigate, initialOrderId }) {
               <div style={{background:"white",border:"1px solid #DDD5C8",borderRadius:8,padding:20}}>
                 <h3 style={{fontSize:16,fontWeight:700,marginBottom:16}}>💳 Pay Delivery Fee</h3>
                 <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                  <span style={{fontSize:14,color:muted}}>Delivery fee</span>
+                  <span style={{fontSize:14,color:muted}}>{t("track_delivery_fee")}</span>
                   <span style={{fontSize:14,fontWeight:600}}>${DELIVERY_FEE.toFixed(2)}</span>
                 </div>
                 <div style={{borderTop:"1px solid #DDD5C8",paddingTop:12,marginBottom:16,marginTop:12}}>
