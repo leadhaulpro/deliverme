@@ -262,7 +262,7 @@ async function dispatchOrder({ ownerMessage, driverMessage, customerPhone, custo
     // Only send the customer the patience message if NO drivers are on AND the owner has stepped out.
     if (onDrivers.length === 0 && !ownerDriving) {
       if (customerPhone) {
-        sendSMS(customerPhone, "DELIVERme: Thanks for your delivery request"+(customerName?", "+customerName.spli" "[0]:"")+"! We're growing our driver network and don't have a driver available this moment. We'll be in touch shortly to arrange your delivery. Thanks for your patience as we grow! 🚗");
+        sendSMS(customerPhone, "DELIVERme: Thanks for your delivery request"+(customerName?", "+customerName.split(" ")[0]:"")+"! We're growing our driver network and don't have a driver available this moment. We'll be in touch shortly to arrange your delivery. Thanks for your patience as we grow! 🚗");
       }
     }
   } catch(e) {}
@@ -747,7 +747,7 @@ function DriverPortal({ navigate, preAuthedDriver }) {
         <div><span style={{fontWeight:900,color:"#E8927C",fontSize:17}}>DELIVER</span><span style={{fontWeight:700,fontSize:17}}>me</span><span style={{fontSize:12,opacity:.7,marginLeft:8}}>Driver</span></div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           
-          <span style={{fontSize:13}}>{"Hi"}, {driver.name?.spli" "[0]}</span>
+          <span style={{fontSize:13}}>{"Hi"}, {driver.name?.split(" ")[0]}</span>
           <button onClick={()=>{setDriver(null);setPin("");}} style={{background:"none",border:"1px solid rgba(255,255,255,.3)",color:"white",fontSize:12,padding:"4px 10px",borderRadius:5,cursor:"pointer"}}>{"Sign Out"}</button>
         </div>
       </header>
@@ -792,7 +792,7 @@ function DriverPortal({ navigate, preAuthedDriver }) {
             <p style={{fontSize:12,color:muted,textAlign:"center"}}>{"Payouts are sent by DELIVERme. Questions? support@deliverme-app.com"}</p>
             {myCompleted.slice(0,10).map(o=>(
               <div key={o.id} style={{background:"white",border:"1px solid "+border,borderRadius:8,padding:12,marginTop:8,display:"flex",justifyContent:"space-between",fontSize:13}}>
-                <span>{o.dropoff_address?.spli","[0]||"Delivery"}</span>
+                <span>{o.dropoff_address?.split(",")[0]||"Delivery"}</span>
                 <span style={{fontWeight:700,color:"#1F8A4C"}}>+${(Number(o.delivery_fee)*0.78).toFixed(2)}</span>
               </div>
             ))}
@@ -1206,7 +1206,7 @@ function DriversPanel() {
       await sb.updateDriver(d.id, { status:"active", pin:pin.trim(), signed_on:false });
       // Auto-text the driver their welcome + PIN
       if (d.phone) {
-        sendSMS(d.phone, "Welcome to the DELIVERme driver team"+(d.name?", "+d.name.spli" "[0]:"")+"! You're approved. Your login PIN is "+pin.trim()+". Sign in with the Driver Login button at "+window.location.origin+" to start taking deliveries. Please keep your PIN private. Questions? support@deliverme-app.com");
+        sendSMS(d.phone, "Welcome to the DELIVERme driver team"+(d.name?", "+d.name.split(" ")[0]:"")+"! You're approved. Your login PIN is "+pin.trim()+". Sign in with the Driver Login button at "+window.location.origin+" to start taking deliveries. Please keep your PIN private. Questions? support@deliverme-app.com");
       }
       await load();
     }
