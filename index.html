@@ -678,7 +678,7 @@ function DriverPortal({ navigate, preAuthedDriver }) {
     try {
       const [updated] = await sb.updateDriver(driver.id, { signed_on: !driver.signed_on });
       setDriver(updated);
-    } catch(e) { aler"Could not update. Try again."; }
+    } catch(e) { alert("Could not update. Try again."); }
   };
 
   // Claim an order
@@ -915,13 +915,13 @@ function Dashboard({ navigate }) {
   const toggleDriving = async () => {
     const next = !imDriving;
     setImDriving(next);
-    try { await sb.setOwnerDriving(next); } catch(e) { setImDriving(!next); aler"Could not update driving status."; }
+    try { await sb.setOwnerDriving(next); } catch(e) { setImDriving(!next); alert("Could not update driving status."); }
   };
 
   const toggleAvailable = async () => {
     const next = !available;
     setAvailable(next);
-    try { await sb.setAvailability(next); } catch(e) { setAvailable(!next); aler"Could not update status."; }
+    try { await sb.setAvailability(next); } catch(e) { setAvailable(!next); alert("Could not update status."); }
   };
 
   const updateStatus = async (id, newStatus) => {
@@ -932,7 +932,7 @@ function Dashboard({ navigate }) {
         const order = orders.find(o=>o.id===id);
         if (order) sendSMS(order.customer_phone, "Hi "+order.customer_name+"! Your order from "+order.restaurant_name+" is on the way. Track: "+window.location.origin+"#track");
       }
-    } catch(e) { aler"Failed to update."; }
+    } catch(e) { alert("Failed to update."); }
   };
 
   const filtered = filter==="all" ? orders : orders.filter(o=>o.status===filter);
@@ -1059,7 +1059,7 @@ function Dashboard({ navigate }) {
                       {order.status==="delivered" && <button className="btn btn-outline" style={{padding:"7px 14px",fontSize:11,borderColor:"#27AE60",color:"#27AE60"}} onClick={()=>{updateStatus(order.id,"paid"); if(order.restaurant_slug) setRatingOrder(order);}}>💰 Mark Paid</button>}
                       {order.status==="paid" && <span style={{fontSize:11,color:"#27AE60",fontWeight:700}}>💰 Paid ✓</span>}
                       {(order.status==="paid"||order.status==="cancelled") && (
-                        <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11,borderColor:"#DC3545",color:"#DC3545"}} onClick={async()=>{ if(confirm("Delete this order?")) { try { await sb.deleteOrder(order.id); setOrders(prev=>prev.filter(o=>o.id!==order.id)); } catch(e){ aler"Failed to delete."; } } }}>🗑 Delete</button>
+                        <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11,borderColor:"#DC3545",color:"#DC3545"}} onClick={async()=>{ if(confirm("Delete this order?")) { try { await sb.deleteOrder(order.id); setOrders(prev=>prev.filter(o=>o.id!==order.id)); } catch(e){ alert("Failed to delete."); } } }}>🗑 Delete</button>
                       )}
                       {order.status!=="cancelled" && order.status!=="delivered" && order.status!=="paid" && (
                         <button className="btn btn-outline" style={{padding:"7px 12px",fontSize:11}} onClick={()=>{
@@ -1093,7 +1093,7 @@ function Dashboard({ navigate }) {
             <p style={{fontSize:13,color:muted,marginBottom:20}}>How was their tipping behavior on this order?</p>
             <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
               {[{stars:5,label:"⭐⭐⭐⭐⭐ Excellent tipper"},{stars:4,label:"⭐⭐⭐⭐ Good tipper"},{stars:3,label:"⭐⭐⭐ Average"},{stars:2,label:"⭐⭐ Rarely tips"},{stars:1,label:"⭐ Never tips"}].map(r=>(
-                <button key={r.stars} onClick={async()=>{ try { await sb.saveRating(ratingOrder.restaurant_name, ratingOrder.restaurant_slug, ratingOrder.id, r.stars>=3, 0, r.stars); setRatingOrder(null); } catch(e){ aler"Could not save rating."; } }} style={{padding:"12px 16px",border:"1px solid #DDD5C8",borderRadius:6,background:"white",cursor:"pointer",fontSize:14,textAlign:"left",fontWeight:500}}>{r.label}</button>
+                <button key={r.stars} onClick={async()=>{ try { await sb.saveRating(ratingOrder.restaurant_name, ratingOrder.restaurant_slug, ratingOrder.id, r.stars>=3, 0, r.stars); setRatingOrder(null); } catch(e){ alert("Could not save rating."); } }} style={{padding:"12px 16px",border:"1px solid #DDD5C8",borderRadius:6,background:"white",cursor:"pointer",fontSize:14,textAlign:"left",fontWeight:500}}>{r.label}</button>
               ))}
             </div>
             <button onClick={()=>setRatingOrder(null)} style={{width:"100%",background:"none",color:muted,border:"none",padding:"10px",cursor:"pointer",fontSize:13}}>Skip for now</button>
@@ -1120,13 +1120,13 @@ function PickupSpotsPanel() {
     if (!name.trim() || !address.trim()) return;
     setSaving(true);
     try { await sb.createPickupLocation({ name: name.trim(), address: address.trim() }); setName(""); setAddress(""); await load(); }
-    catch(e){ aler"Could not save location."; }
+    catch(e){ alert("Could not save location."); }
     finally { setSaving(false); }
   };
 
   const remove = async (id) => {
     if (!confirm("Remove this pickup location?")) return;
-    try { await sb.deletePickupLocation(id); await load(); } catch(e){ aler"Could not delete."; }
+    try { await sb.deletePickupLocation(id); await load(); } catch(e){ alert("Could not delete."); }
   };
 
   const seedRestaurants = async () => {
@@ -1139,7 +1139,7 @@ function PickupSpotsPanel() {
       for (const r of toAdd) { await sb.createPickupLocation({ name: r.name, address: r.address }); }
       await load();
       alert(toAdd.length>0 ? ("Added "+toAdd.length+" restaurant(s)!") : "All restaurants are already in your list.");
-    } catch(e){ aler"Could not add restaurants."; }
+    } catch(e){ alert("Could not add restaurants."); }
     finally { setSaving(false); }
   };
 
@@ -1192,16 +1192,16 @@ function DriversPanel() {
 
   const remove = async (id, name) => {
     if (!confirm("Remove "+(name||"this applicant")+" from your driver list? This deletes them entirely.")) return;
-    try { await sb.deleteDriver(id); await load(); } catch(e){ aler"Could not remove."; }
+    try { await sb.deleteDriver(id); await load(); } catch(e){ alert("Could not remove."); }
   };
 
   const activeCount = drivers.filter(d=>d.status==="active").length;
 
   const approve = async (d) => {
-    if (activeCount >= 5) { aler"You already have 5 active drivers (the max). Suspend one before activating another."; return; }
+    if (activeCount >= 5) { alert("You already have 5 active drivers (the max). Suspend one before activating another."); return; }
     const pin = prompt("Assign a PIN for "+(d.name||"this driver")+" (they'll use it to sign in on the DELIVERme home page):", "");
     if (pin===null) return;
-    if (!pin.trim()) { aler"PIN cannot be empty."; return; }
+    if (!pin.trim()) { alert("PIN cannot be empty."); return; }
     try {
       await sb.updateDriver(d.id, { status:"active", pin:pin.trim(), signed_on:false });
       // Auto-text the driver their welcome + PIN
@@ -1210,25 +1210,25 @@ function DriversPanel() {
       }
       await load();
     }
-    catch(e){ aler"Could not approve."; }
+    catch(e){ alert("Could not approve."); }
   };
 
   const suspend = async (d) => {
     if (!confirm("Suspend "+(d.name||"this driver")+"? They won't be able to claim new orders. (They can finish any delivery already in progress.)")) return;
     try { await sb.updateDriver(d.id, { status:"suspended", signed_on:false }); await load(); }
-    catch(e){ aler"Could not suspend."; }
+    catch(e){ alert("Could not suspend."); }
   };
 
   const reactivate = async (d) => {
-    if (activeCount >= 5) { aler"You already have 5 active drivers (the max). Suspend one first."; return; }
+    if (activeCount >= 5) { alert("You already have 5 active drivers (the max). Suspend one first."); return; }
     try { await sb.updateDriver(d.id, { status:"active" }); await load(); }
-    catch(e){ aler"Could not reactivate."; }
+    catch(e){ alert("Could not reactivate."); }
   };
 
   const resetPin = async (d) => {
     const pin = prompt("Set a new PIN for "+(d.name||"this driver")+":", d.pin||"");
     if (pin===null) return;
-    if (!pin.trim()) { aler"PIN cannot be empty."; return; }
+    if (!pin.trim()) { alert("PIN cannot be empty."); return; }
     try {
       await sb.updateDriver(d.id, { pin:pin.trim() });
       if (d.phone) {
@@ -1236,7 +1236,7 @@ function DriversPanel() {
       }
       await load();
     }
-    catch(e){ aler"Could not reset PIN."; }
+    catch(e){ alert("Could not reset PIN."); }
   };
 
   // Earnings per driver from delivered orders
@@ -1344,7 +1344,7 @@ function HoursPanel() {
   const save = async () => {
     setSaving(true); setSaved(false);
     try { await sb.setSchedule(schedule, announce); setSaved(true); setTimeout(()=>setSaved(false),2500); }
-    catch(e){ aler"Could not save. Try again."; }
+    catch(e){ alert("Could not save. Try again."); }
     finally { setSaving(false); }
   };
 
@@ -1471,8 +1471,8 @@ function QRPanel() {
                 <div style={{fontSize:12,color:muted,marginBottom:8}}>{qr.desc}</div>
                 <div style={{fontSize:10,color:rust,wordBreak:"break-all",marginBottom:8}}><a href={qr.url} target="_blank" style={{color:rust,textDecoration:"underline"}}>{qr.url}</a></div>
                 <div style={{display:"flex",gap:8}}>
-                  <button onClick={()=>{navigator.clipboard.writeText(qr.url).then(()=>aler"Link copied!").catch(()=>alert(qr.url));}} style={{background:ink,color:"white",border:"none",padding:"6px 14px",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>Copy</button>
-                  <button onClick={()=>{ if(navigator.share) navigator.share({title:"DELIVERme — "+qr.label, url:qr.url}); else navigator.clipboard.writeText(qr.url).then(()=>aler"Link copied!"); }} style={{background:rust,color:"white",border:"none",padding:"6px 14px",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>Share</button>
+                  <button onClick={()=>{navigator.clipboard.writeText(qr.url).then(()=>alert("Link copied!")).catch(()=>alert(qr.url));}} style={{background:ink,color:"white",border:"none",padding:"6px 14px",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>Copy</button>
+                  <button onClick={()=>{ if(navigator.share) navigator.share({title:"DELIVERme — "+qr.label, url:qr.url}); else navigator.clipboard.writeText(qr.url).then(()=>alert("Link copied!")); }} style={{background:rust,color:"white",border:"none",padding:"6px 14px",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>Share</button>
                 </div>
               </div>
             </div>
@@ -1877,12 +1877,12 @@ function RestaurantPortal({ restaurant, slug }) {
                   <div style={{textAlign:"right"}}><div style={{fontSize:11,color:muted}}>{timeAgo(order.created_at)}</div></div>
                 </div>
                 {(order.status === "delivered" || order.status === "cancelled" || order.status === "paid") && (
-                  <button onClick={async()=>{ if(confirm("Remove this order from your list?")) { try { await sb.deleteOrder(order.id); loadRecentOrders(); } catch(e){ aler"Failed to delete."; } } }} style={{marginTop:8,width:"100%",background:"none",color:"#DC3545",border:"1px solid #DC3545",padding:"6px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>🗑 Remove Order</button>
+                  <button onClick={async()=>{ if(confirm("Remove this order from your list?")) { try { await sb.deleteOrder(order.id); loadRecentOrders(); } catch(e){ alert("Failed to delete."); } } }} style={{marginTop:8,width:"100%",background:"none",color:"#DC3545",border:"1px solid #DC3545",padding:"6px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>🗑 Remove Order</button>
                 )}
                 {order.status === "pending" && (
                   <div style={{marginTop:10}}>
                     <div style={{padding:"8px",background:"#FFF3CD",borderRadius:4,textAlign:"center",fontSize:12,color:"#856404",fontWeight:600,marginBottom:8}}>⏳ Waiting for driver to accept</div>
-                    <button onClick={async()=>{ if(confirm("Cancel this order?")) { try { await sb.updateOrder(order.id,{status:"cancelled"}); loadRecentOrders(); } catch(e){ aler"Could not cancel."; } } }} style={{width:"100%",background:"none",color:"#DC3545",border:"1px solid #DC3545",padding:"7px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>✕ Cancel This Order</button>
+                    <button onClick={async()=>{ if(confirm("Cancel this order?")) { try { await sb.updateOrder(order.id,{status:"cancelled"}); loadRecentOrders(); } catch(e){ alert("Could not cancel."); } } }} style={{width:"100%",background:"none",color:"#DC3545",border:"1px solid #DC3545",padding:"7px",borderRadius:4,cursor:"pointer",fontSize:12,fontWeight:600}}>✕ Cancel This Order</button>
                   </div>
                 )}
                 {order.status === "active" && (
